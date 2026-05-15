@@ -1,0 +1,403 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--sora:'Sora',sans-serif;--mono:'JetBrains Mono',monospace}
+  body{font-family:var(--sora)}
+
+  .shell{display:flex;height:680px;background:var(--color-background-tertiary);border-radius:var(--border-radius-xl);overflow:hidden;border:0.5px solid var(--color-border-tertiary)}
+
+  /* Sidebar */
+  .sidebar{width:220px;flex-shrink:0;background:var(--color-background-primary);border-right:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;padding:20px 0}
+  .logo{padding:0 20px 24px;display:flex;align-items:center;gap:10px}
+  .logo-icon{width:34px;height:34px;background:#1D9E75;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .logo-icon svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2}
+  .logo-text{font-size:16px;font-weight:600;color:var(--color-text-primary);letter-spacing:-0.3px}
+  .logo-sub{font-size:10px;color:var(--color-text-secondary);font-family:var(--mono);letter-spacing:0.5px}
+
+  .nav-section{padding:0 12px;margin-bottom:6px}
+  .nav-label{font-size:10px;color:var(--color-text-tertiary);font-family:var(--mono);letter-spacing:1px;padding:0 8px;margin-bottom:8px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--border-radius-md);cursor:pointer;font-size:13px;color:var(--color-text-secondary);transition:all 0.15s}
+  .nav-item:hover{background:var(--color-background-secondary);color:var(--color-text-primary)}
+  .nav-item.active{background:#E1F5EE;color:#0F6E56;font-weight:500}
+  .nav-item i{font-size:16px;width:18px;text-align:center}
+
+  .agent-section{padding:0 12px;margin-top:8px}
+  .agent-badge{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--border-radius-md);cursor:pointer;font-size:13px;color:var(--color-text-secondary);transition:all 0.15s;margin-bottom:4px}
+  .agent-badge:hover{background:var(--color-background-secondary)}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .dot-green{background:#1D9E75}
+  .dot-blue{background:#378ADD}
+  .dot-amber{background:#EF9F27}
+
+  .sidebar-bottom{margin-top:auto;padding:16px 12px 0}
+  .user-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--border-radius-md);cursor:pointer}
+  .user-row:hover{background:var(--color-background-secondary)}
+  .avatar{width:32px;height:32px;border-radius:50%;background:#1D9E75;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0}
+  .user-name{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+  .user-role{font-size:11px;color:var(--color-text-tertiary)}
+
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+  .topbar{padding:16px 24px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between;background:var(--color-background-primary);flex-shrink:0}
+  .topbar-left{display:flex;align-items:center;gap:12px}
+  .page-title{font-size:16px;font-weight:500;color:var(--color-text-primary)}
+  .lang-toggle{display:flex;gap:2px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:3px}
+  .lang-btn{padding:4px 10px;border-radius:6px;font-size:11px;font-family:var(--mono);cursor:pointer;border:none;background:transparent;color:var(--color-text-secondary);transition:all 0.15s;font-weight:500}
+  .lang-btn.active{background:var(--color-background-primary);color:var(--color-text-primary);border:0.5px solid var(--color-border-tertiary)}
+  .topbar-right{display:flex;align-items:center;gap:10px}
+  .icon-btn{width:34px;height:34px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--color-text-secondary)}
+  .icon-btn:hover{background:var(--color-background-secondary)}
+
+  .content{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:20px}
+
+  /* Stats row */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .stat-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px}
+  .stat-label{font-size:11px;color:var(--color-text-secondary);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .stat-label i{font-size:14px}
+  .stat-val{font-size:22px;font-weight:500;color:var(--color-text-primary);font-family:var(--mono);letter-spacing:-1px}
+  .stat-delta{font-size:11px;margin-top:4px;display:flex;align-items:center;gap:3px}
+  .delta-up{color:#0F6E56}
+  .delta-dn{color:#993C1D}
+
+  /* Two-col */
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+  .panel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px}
+  .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .panel-title{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+  .panel-action{font-size:11px;color:#0F6E56;cursor:pointer;font-family:var(--mono)}
+
+  /* Agent cards */
+  .agent-card{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);margin-bottom:8px;cursor:pointer;transition:all 0.15s}
+  .agent-card:hover{border-color:#5DCAA5;background:#E1F5EE10}
+  .agent-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+  .agent-icon.agri{background:#E1F5EE}
+  .agent-icon.med{background:#E6F1FB}
+  .agent-icon.edu{background:#FAEEDA}
+  .agent-info{flex:1;min-width:0}
+  .agent-name{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+  .agent-stat{font-size:11px;color:var(--color-text-secondary);margin-top:1px}
+  .agent-bar-wrap{flex-shrink:0;width:60px}
+  .agent-bar-bg{height:4px;background:var(--color-background-tertiary);border-radius:2px;overflow:hidden}
+  .agent-bar-fill{height:100%;border-radius:2px}
+  .bar-green{background:#1D9E75}
+  .bar-blue{background:#378ADD}
+  .bar-amber{background:#EF9F27}
+
+  /* Chat preview */
+  .chat-feed{display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:85%}
+  .msg-ai{align-self:flex-start}
+  .msg-user{align-self:flex-end}
+  .msg-bubble{padding:9px 12px;border-radius:12px;font-size:12px;line-height:1.5}
+  .bubble-ai{background:var(--color-background-secondary);color:var(--color-text-primary);border-bottom-left-radius:4px}
+  .bubble-user{background:#1D9E75;color:#fff;border-bottom-right-radius:4px}
+  .msg-meta{font-size:10px;color:var(--color-text-tertiary);margin-top:3px;font-family:var(--mono)}
+  .msg-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:4px;margin-bottom:4px;font-family:var(--mono)}
+  .tag-agri{background:#E1F5EE;color:#0F6E56}
+  .tag-med{background:#E6F1FB;color:#185FA5}
+
+  /* Voice bar */
+  .voice-bar{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 16px;display:flex;align-items:center;gap:14px}
+  .mic-btn{width:40px;height:40px;border-radius:50%;background:#1D9E75;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+  .mic-btn i{font-size:18px;color:#fff}
+  .waveform{flex:1;display:flex;align-items:center;gap:3px;height:32px}
+  .wave-bar{flex:1;border-radius:2px;background:var(--color-background-tertiary);animation:wavePulse 1.2s ease-in-out infinite}
+  @keyframes wavePulse{0%,100%{height:4px}50%{height:24px}}
+  .voice-lang{font-size:11px;color:var(--color-text-secondary);font-family:var(--mono)}
+
+  /* Right panel (full height) */
+  .right-col{width:280px;flex-shrink:0;border-left:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);display:flex;flex-direction:column;overflow:hidden}
+  .right-top{padding:16px;border-bottom:0.5px solid var(--color-border-tertiary);flex-shrink:0}
+  .crop-img-placeholder{width:100%;aspect-ratio:4/3;background:var(--color-background-secondary);border-radius:var(--border-radius-md);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;overflow:hidden;position:relative}
+  .crop-img-placeholder svg{width:32px;height:32px;stroke:var(--color-text-tertiary);fill:none;stroke-width:1.5}
+  .leaf-decor{position:absolute;opacity:0.08}
+  .disease-result{padding:10px 12px;border-radius:var(--border-radius-md);border:0.5px solid #9FE1CB;background:#E1F5EE}
+  .disease-name{font-size:13px;font-weight:500;color:#0F6E56;margin-bottom:2px}
+  .disease-conf{font-size:11px;color:#1D9E75;font-family:var(--mono)}
+  .conf-bar{height:3px;background:#9FE1CB;border-radius:2px;margin-top:6px}
+  .conf-fill{width:87%;height:100%;background:#0F6E56;border-radius:2px}
+
+  .right-mid{padding:16px;flex:1;overflow-y:auto}
+  .activity-item{display:flex;gap:10px;margin-bottom:14px}
+  .activity-dot-wrap{display:flex;flex-direction:column;align-items:center;gap:0}
+  .act-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px}
+  .act-line{width:1px;flex:1;background:var(--color-border-tertiary);margin:4px 0}
+  .act-content{flex:1;min-width:0}
+  .act-title{font-size:12px;font-weight:500;color:var(--color-text-primary);line-height:1.4}
+  .act-time{font-size:10px;color:var(--color-text-tertiary);font-family:var(--mono);margin-top:2px}
+
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--color-border-tertiary);border-radius:2px}
+</style>
+
+<h2 class="sr-only">GramAI — Rural Multi-Agent AI Assistant Platform dashboard interface mockup</h2>
+
+<div class="shell">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></svg>
+      </div>
+      <div>
+        <div class="logo-text">GramAI</div>
+        <div class="logo-sub">RURAL AI PLATFORM</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">MAIN</div>
+      <div class="nav-item active"><i class="ti ti-layout-dashboard" aria-hidden="true"></i> Dashboard</div>
+      <div class="nav-item"><i class="ti ti-message-2" aria-hidden="true"></i> Chat</div>
+      <div class="nav-item"><i class="ti ti-microphone" aria-hidden="true"></i> Voice</div>
+      <div class="nav-item"><i class="ti ti-chart-bar" aria-hidden="true"></i> Analytics</div>
+    </div>
+
+    <div class="agent-section" style="margin-top:16px">
+      <div class="nav-label">AGENTS</div>
+      <div class="agent-badge"><div class="dot dot-green"></div> Agriculture</div>
+      <div class="agent-badge"><div class="dot dot-blue"></div> Medical</div>
+      <div class="agent-badge"><div class="dot dot-amber"></div> Education</div>
+    </div>
+
+    <div class="nav-section" style="margin-top:12px">
+      <div class="nav-label">SYSTEM</div>
+      <div class="nav-item"><i class="ti ti-upload" aria-hidden="true"></i> Crop Upload</div>
+      <div class="nav-item"><i class="ti ti-settings" aria-hidden="true"></i> Settings</div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="user-row">
+        <div class="avatar">RK</div>
+        <div>
+          <div class="user-name">Raju Kumar</div>
+          <div class="user-role">Farmer · Kolar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="page-title">Dashboard</div>
+        <div class="lang-toggle">
+          <button class="lang-btn active">EN</button>
+          <button class="lang-btn">ಕನ್ನಡ</button>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="icon-btn"><i class="ti ti-bell" aria-hidden="true"></i></div>
+        <div class="icon-btn"><i class="ti ti-search" aria-hidden="true"></i></div>
+        <div style="display:flex;align-items:center;gap:6px;background:var(--color-background-secondary);padding:4px 10px 4px 6px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);cursor:pointer">
+          <div style="width:7px;height:7px;background:#1D9E75;border-radius:50%;animation:pulse 2s infinite"></div>
+          <span style="font-size:11px;color:var(--color-text-secondary);font-family:var(--mono)">3 agents online</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label"><i class="ti ti-message-dots" aria-hidden="true"></i> Total queries</div>
+          <div class="stat-val">2,841</div>
+          <div class="stat-delta delta-up"><i class="ti ti-arrow-up" style="font-size:11px"></i> 12% this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><i class="ti ti-leaf" aria-hidden="true"></i> Crop scans</div>
+          <div class="stat-val">387</div>
+          <div class="stat-delta delta-up"><i class="ti ti-arrow-up" style="font-size:11px"></i> 8% this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><i class="ti ti-clock" aria-hidden="true"></i> Avg response</div>
+          <div class="stat-val">1.4s</div>
+          <div class="stat-delta delta-up"><i class="ti ti-arrow-up" style="font-size:11px"></i> Faster by 0.3s</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><i class="ti ti-users" aria-hidden="true"></i> Active users</div>
+          <div class="stat-val">142</div>
+          <div class="stat-delta delta-dn"><i class="ti ti-arrow-down" style="font-size:11px"></i> 3% this week</div>
+        </div>
+      </div>
+
+      <!-- Two col -->
+      <div class="two-col">
+        <!-- Agent performance -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Agent performance</div>
+            <div class="panel-action">View all →</div>
+          </div>
+          <div class="agent-card">
+            <div class="agent-icon agri">🌾</div>
+            <div class="agent-info">
+              <div class="agent-name">Agriculture</div>
+              <div class="agent-stat">1,204 queries · 94% satisfaction</div>
+            </div>
+            <div class="agent-bar-wrap">
+              <div class="agent-bar-bg"><div class="agent-bar-fill bar-green" style="width:94%"></div></div>
+              <div style="font-size:10px;color:#0F6E56;font-family:var(--mono);margin-top:3px;text-align:right">94%</div>
+            </div>
+          </div>
+          <div class="agent-card">
+            <div class="agent-icon med">🩺</div>
+            <div class="agent-info">
+              <div class="agent-name">Medical</div>
+              <div class="agent-stat">891 queries · 88% satisfaction</div>
+            </div>
+            <div class="agent-bar-wrap">
+              <div class="agent-bar-bg"><div class="agent-bar-fill bar-blue" style="width:88%"></div></div>
+              <div style="font-size:10px;color:#185FA5;font-family:var(--mono);margin-top:3px;text-align:right">88%</div>
+            </div>
+          </div>
+          <div class="agent-card">
+            <div class="agent-icon edu">📚</div>
+            <div class="agent-info">
+              <div class="agent-name">Education</div>
+              <div class="agent-stat">746 queries · 91% satisfaction</div>
+            </div>
+            <div class="agent-bar-wrap">
+              <div class="agent-bar-bg"><div class="agent-bar-fill bar-amber" style="width:91%"></div></div>
+              <div style="font-size:10px;color:#854F0B;font-family:var(--mono);margin-top:3px;text-align:right">91%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat preview -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Recent conversation</div>
+            <div class="panel-action">Open chat →</div>
+          </div>
+          <div class="chat-feed">
+            <div class="msg msg-user">
+              <div class="bubble-user msg-bubble">ನನ್ನ ಟೊಮೇಟೊ ಎಲೆಗಳಲ್ಲಿ ಹಳದಿ ಕಲೆಗಳಿವೆ</div>
+              <div class="msg-meta" style="text-align:right">Raju · 10:42 AM</div>
+            </div>
+            <div class="msg msg-ai">
+              <div class="msg-tag tag-agri"><i class="ti ti-leaf" style="font-size:10px"></i> Agriculture Agent</div>
+              <div class="bubble-ai msg-bubble">Yellow spots on tomato leaves indicate early blight (Alternaria solani). Apply copper-based fungicide and ensure proper drainage.</div>
+              <div class="msg-meta">AI · 10:42 AM · 1.2s</div>
+            </div>
+            <div class="msg msg-user">
+              <div class="bubble-user msg-bubble">My child has had fever for 2 days</div>
+              <div class="msg-meta" style="text-align:right">Raju · 10:51 AM</div>
+            </div>
+            <div class="msg msg-ai">
+              <div class="msg-tag tag-med"><i class="ti ti-heart-rate-monitor" style="font-size:10px"></i> Medical Agent</div>
+              <div class="bubble-ai msg-bubble">⚠️ Please consult a qualified doctor immediately. For now, ensure hydration and monitor temperature every 4 hours.</div>
+              <div class="msg-meta">AI · 10:51 AM · 0.9s</div>
+            </div>
+          </div>
+          <!-- Voice input bar -->
+          <div class="voice-bar" style="margin-top:12px">
+            <div class="mic-btn"><i class="ti ti-microphone" aria-hidden="true"></i></div>
+            <div class="waveform">
+              <div class="wave-bar" style="animation-delay:0s"></div>
+              <div class="wave-bar" style="animation-delay:0.1s"></div>
+              <div class="wave-bar" style="animation-delay:0.2s"></div>
+              <div class="wave-bar" style="animation-delay:0.3s"></div>
+              <div class="wave-bar" style="animation-delay:0.4s"></div>
+              <div class="wave-bar" style="animation-delay:0.15s"></div>
+              <div class="wave-bar" style="animation-delay:0.25s"></div>
+              <div class="wave-bar" style="animation-delay:0.35s"></div>
+              <div class="wave-bar" style="animation-delay:0.05s"></div>
+              <div class="wave-bar" style="animation-delay:0.45s"></div>
+              <div class="wave-bar" style="animation-delay:0.1s"></div>
+              <div class="wave-bar" style="animation-delay:0.2s"></div>
+            </div>
+            <div class="voice-lang">EN · ಕನ್ನಡ</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="right-col">
+    <div class="right-top">
+      <div class="panel-header" style="margin-bottom:12px">
+        <div class="panel-title">Crop disease scan</div>
+        <div style="font-size:11px;font-family:var(--mono);background:#E1F5EE;color:#0F6E56;padding:2px 8px;border-radius:4px">NEW</div>
+      </div>
+      <div class="crop-img-placeholder">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span style="font-size:11px;color:var(--color-text-tertiary)">Drop crop image here</span>
+        <div style="font-size:10px;background:#1D9E75;color:#fff;padding:4px 12px;border-radius:20px;margin-top:4px;cursor:pointer">Upload photo</div>
+      </div>
+      <div class="disease-result">
+        <div class="disease-name">Early Blight detected</div>
+        <div class="disease-conf">Confidence: 87.3% · PlantVillage</div>
+        <div class="conf-bar"><div class="conf-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="right-mid">
+      <div class="panel-header" style="margin-bottom:14px">
+        <div class="panel-title">Live activity</div>
+      </div>
+
+      <div class="activity-item">
+        <div class="activity-dot-wrap">
+          <div class="act-dot" style="background:#1D9E75"></div>
+          <div class="act-line"></div>
+        </div>
+        <div class="act-content">
+          <div class="act-title">Agriculture agent routed query about wheat irrigation</div>
+          <div class="act-time">2 min ago</div>
+        </div>
+      </div>
+      <div class="activity-item">
+        <div class="activity-dot-wrap">
+          <div class="act-dot" style="background:#378ADD"></div>
+          <div class="act-line"></div>
+        </div>
+        <div class="act-content">
+          <div class="act-title">Medical agent issued safety escalation for fever query</div>
+          <div class="act-time">5 min ago</div>
+        </div>
+      </div>
+      <div class="activity-item">
+        <div class="activity-dot-wrap">
+          <div class="act-dot" style="background:#EF9F27"></div>
+          <div class="act-line"></div>
+        </div>
+        <div class="act-content">
+          <div class="act-title">Education agent generated quiz: Grade 8 science</div>
+          <div class="act-time">11 min ago</div>
+        </div>
+      </div>
+      <div class="activity-item">
+        <div class="activity-dot-wrap">
+          <div class="act-dot" style="background:#1D9E75"></div>
+          <div class="act-line"></div>
+        </div>
+        <div class="act-content">
+          <div class="act-title">Crop scan: Tomato — Early Blight (87%)</div>
+          <div class="act-time">18 min ago</div>
+        </div>
+      </div>
+      <div class="activity-item">
+        <div class="activity-dot-wrap">
+          <div class="act-dot" style="background:#888780"></div>
+        </div>
+        <div class="act-content">
+          <div class="act-title">New user registered: Priya Devi, Raichur</div>
+          <div class="act-time">32 min ago</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+</style>
