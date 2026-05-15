@@ -69,7 +69,7 @@ def _seed_demo_user():
             )
             db.add(demo)
             db.commit()
-            print("✅ Demo user created: demo@gramai.in / demo1234")
+            print("Demo user created: demo@gramai.in / demo1234")
     finally:
         db.close()
 
