@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '../../contexts/ChatContext';
-import { voiceAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { Mic, MicOff, Send, Loader2, Image as ImageIcon } from 'lucide-react';
 
 const QUICK_PROMPTS = [
   { label: 'Crop disease?', icon: 'ti-leaf', agent: 'agriculture' },
@@ -12,9 +12,10 @@ const QUICK_PROMPTS = [
 ];
 
 export default function ChatInput({ onImageUpload }) {
-  const { sendMessage, language } = useChat();
+  const { sendMessage, language, activeTopic } = useChat();
   const [value, setValue] = useState('');
   const [recording, setRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const mediaRef = useRef(null);
   const chunksRef = useRef([]);
@@ -37,44 +38,73 @@ export default function ChatInput({ onImageUpload }) {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
+      
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg";
+      const mr = new MediaRecorder(stream, { mimeType });
+      
       chunksRef.current = [];
-      mr.ondataavailable = (e) => chunksRef.current.push(e.data);
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      
       mr.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const fd = new FormData();
-        fd.append('audio', blob, 'voice.webm');
-        fd.append('language', language);
-        try {
-          const res = await voiceAPI.transcribe(fd);
-          const transcribed = res.data.text;
-          setValue(transcribed);
-          toast.success('Voice transcribed!');
-        } catch {
-          toast.error('Transcription failed — check backend connection');
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        if (blob.size < 500) {
+          toast.error("Recording too short");
+          return;
         }
+
+        await handleChatTranscription(blob, mimeType);
         stream.getTracks().forEach(t => t.stop());
       };
+      
       mr.start();
       mediaRef.current = mr;
       setRecording(true);
-    } catch {
+    } catch (err) {
+      console.error("Mic error:", err);
       toast.error('Microphone access denied');
     }
   };
 
   const stopRecording = () => {
-    mediaRef.current?.stop();
-    setRecording(false);
+    if (mediaRef.current && recording) {
+      mediaRef.current.stop();
+      setRecording(false);
+    }
+  };
+
+  const handleChatTranscription = async (blob, mimeType) => {
+    try {
+      setIsProcessing(true);
+      const extension = mimeType.includes("webm") ? "webm" : "ogg";
+      const formData = new FormData();
+      formData.append('file', blob, `chat_voice.${extension}`);
+      formData.append('language', language);
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/audio/transcribe`, {
+        method: "POST",
+        body: formData
+      });
+      
+      const result = await response.json();
+      if (result.success && result.text) {
+        setValue(prev => prev ? prev + " " + result.text : result.text);
+        toast.success('Voice transcribed!');
+      } else {
+        toast.error('Transcription failed');
+      }
+    } catch (err) {
+      console.error("Transcription error:", err);
+      toast.error('Could not transcribe audio');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
-      return;
-    }
     setUploading(true);
     try {
       await onImageUpload?.(file);
@@ -84,9 +114,20 @@ export default function ChatInput({ onImageUpload }) {
     }
   };
 
+  const getPlaceholder = () => {
+    if (language === 'kn') return 'ನಿಮ್ಮ ಪ್ರಶ್ನೆ ಟೈಪ್ ಮಾಡಿ...';
+    
+    const placeholders = {
+      agriculture: "Ask about your crops, diseases, soil...",
+      medical: "Describe your symptoms or health question...",
+      education: "Ask any subject question or concept...",
+      all: "Ask about farming, health, or education..."
+    };
+    return placeholders[activeTopic] || placeholders.all;
+  };
+
   return (
     <div style={{ padding: '12px 16px', borderTop: '0.5px solid var(--color-border-tertiary)', flexShrink: 0 }}>
-      {/* Quick prompts */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
         {QUICK_PROMPTS.map(p => (
           <button
@@ -99,10 +140,7 @@ export default function ChatInput({ onImageUpload }) {
               background: 'var(--color-background-secondary)',
               color: 'var(--color-text-secondary)',
               cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace',
-              transition: 'all 0.15s',
             }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#1D9E75'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border-tertiary)'}
           >
             <i className={`ti ${p.icon}`} style={{ fontSize: 11 }} />
             {p.label}
@@ -110,24 +148,19 @@ export default function ChatInput({ onImageUpload }) {
         ))}
       </div>
 
-      {/* Input row */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column',
           background: 'var(--color-background-secondary)',
           border: '0.5px solid var(--color-border-tertiary)',
           borderRadius: 14, padding: '8px 12px',
-          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-          onFocusCapture={e => e.currentTarget.style.borderColor = '#1D9E75'}
-          onBlurCapture={e => e.currentTarget.style.borderColor = 'var(--color-border-tertiary)'}
-        >
+        }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <textarea
               value={value}
               onChange={e => setValue(e.target.value)}
               onKeyDown={handleKey}
-              placeholder={language === 'kn' ? 'ನಿಮ್ಮ ಪ್ರಶ್ನೆ ಟೈಪ್ ಮಾಡಿ...' : 'Ask about farming, health, or education...'}
+              placeholder={getPlaceholder()}
               rows={1}
               style={{
                 flex: 1, background: 'none', border: 'none', outline: 'none',
@@ -136,63 +169,45 @@ export default function ChatInput({ onImageUpload }) {
                 maxHeight: 120, minHeight: 24, overflowY: 'auto',
               }}
             />
-            {/* Image upload inside input for cleaner look */}
             <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              style={{
-                color: uploading ? '#1D9E75' : 'var(--color-text-tertiary)',
-                cursor: 'pointer', background: 'none', border: 'none', padding: '2px 0'
-              }}
-              title="Upload crop image"
+              style={{ color: 'var(--color-text-tertiary)', cursor: 'pointer', background: 'none', border: 'none' }}
             >
-              <i className={`ti ${uploading ? 'ti-loader-2' : 'ti-photo'}`} style={{ fontSize: 18, animation: uploading ? 'spin 1s linear infinite' : 'none' }} />
+              {uploading ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
             </button>
-          </div>
-          
-          {/* Bottom info bar inside input box */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-            <span style={{ fontSize: 9, fontFamily: 'JetBrains Mono', color: 'var(--color-text-tertiary)', opacity: value.length > 0 ? 1 : 0 }}>
-              {value.length}/2000
-            </span>
           </div>
         </div>
 
-        {/* Action Buttons Group */}
         <div style={{ display: 'flex', gap: 8 }}>
           <AnimatePresence mode="wait">
             {recording ? (
               <motion.button
                 key="stop"
-                initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
+                initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
                 onClick={stopRecording}
                 style={{
                   width: 48, height: 48, borderRadius: '50%', background: '#E53E3E',
                   border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '0 4px 15px rgba(229,62,62,0.3)',
-                  transition: 'all 0.2s',
                 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
               >
-                <i className="ti ti-square-filled" style={{ fontSize: 20, color: '#fff' }} />
+                <MicOff size={20} color="#fff" />
               </motion.button>
             ) : (
               <motion.button
                 key="mic"
-                initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
+                initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
                 onClick={startRecording}
+                disabled={isProcessing}
                 style={{
                   width: 48, height: 48, borderRadius: '50%', background: '#1D9E75',
                   border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '0 4px 15px rgba(29,158,117,0.25)',
-                  transition: 'all 0.2s',
                 }}
-                whileHover={{ scale: 1.05, background: '#178F68' }}
-                whileTap={{ scale: 0.95 }}
               >
-                <i className="ti ti-microphone" style={{ fontSize: 22, color: '#fff' }} />
+                {isProcessing ? <Loader2 size={22} color="#fff" className="animate-spin" /> : <Mic size={22} color="#fff" />}
               </motion.button>
             )}
           </AnimatePresence>
@@ -206,17 +221,9 @@ export default function ChatInput({ onImageUpload }) {
               border: value.trim() ? 'none' : '1px solid var(--color-border-tertiary)',
               cursor: value.trim() ? 'pointer' : 'default',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.2s',
-              boxShadow: value.trim() ? '0 4px 15px rgba(29,158,117,0.3)' : 'none',
             }}
-            whileHover={value.trim() ? { scale: 1.05, background: '#178F68' } : {}}
-            whileTap={value.trim() ? { scale: 0.95 } : {}}
           >
-            <i className="ti ti-send-2" style={{
-              fontSize: 22,
-              color: value.trim() ? '#fff' : 'var(--color-text-tertiary)',
-              transform: value.trim() ? 'translateX(1px)' : 'none'
-            }} />
+            <Send size={22} color={value.trim() ? '#fff' : 'var(--color-text-tertiary)'} />
           </motion.button>
         </div>
       </div>

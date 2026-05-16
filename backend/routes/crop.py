@@ -32,7 +32,17 @@ async def analyze_crop(
         raise HTTPException(status_code=413, detail="Image too large (max 10MB)")
 
     # Run analysis
-    result = analyze_crop_image(content, filename=image.filename or "")
+    result = await analyze_crop_image(content, filename=image.filename or "")
+
+    if "error" in result:
+        return result
+
+@router.post("/disease", tags=["scan"])
+async def scan_disease_alias(file: UploadFile = File(...)):
+    """Alias for /api/crop/analyze to match user requirement."""
+    content = await file.read()
+    result = await analyze_crop_image(content, filename=file.filename or "")
+    return {"success": True, "data": result}
 
     # Save image
     fname = f"{uuid.uuid4().hex}.jpg"
@@ -48,10 +58,18 @@ async def analyze_crop(
         report = CropReport(
             user_id=current_user.id,
             image_path=fpath,
-            disease=result["disease"],
-            confidence=result["confidence"],
-            treatment=result["treatment"],
-            prevention=result["prevention"],
+            disease=result["disease_detected"],
+            confidence=float(result["confidence"]),
+            severity=result.get("severity"),
+            symptoms=result.get("symptoms"),
+            causes=result.get("causes"),
+            organic_treatment=result.get("organic_treatment"),
+            chemical_treatment=result.get("chemical_treatment"),
+            fertilizer_tip=result.get("fertilizer_tip"),
+            prevention=result.get("prevention"),
+            recovery_estimate=result.get("recovery_estimate"),
+            farmer_advice=result.get("farmer_advice"),
+            crop_type=result.get("crop_detected"),
         )
         db.add(report)
         db.add(AnalyticsEvent(
@@ -61,16 +79,7 @@ async def analyze_crop(
         ))
         db.commit()
 
-    return {
-        "plant_name":       result.get("plant_name", "Unknown Plant"),
-        "disease":          result["disease"],
-        "confidence":       result["confidence"],
-        "treatment":        result["treatment"],
-        "prevention":       result["prevention"],
-        "treatment_summary": result.get("treatment_summary", ""),
-        "model":            result.get("model", "GramAI-CNN"),
-        "demo":             result.get("demo", False),
-    }
+    return result
 
 
 @router.get("/reports")

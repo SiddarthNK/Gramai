@@ -3,6 +3,9 @@ GramAI Backend — FastAPI Application Entry Point
 """
 
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -10,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from config import get_settings
 from database.models import create_tables
-from routes import auth, chat, voice, crop, analytics
+from routes import auth, chat, voice, crop, analytics, scan, audio
 
 settings = get_settings()
 
@@ -39,6 +42,8 @@ app.include_router(chat.router)
 app.include_router(voice.router)
 app.include_router(crop.router)
 app.include_router(analytics.router)
+app.include_router(scan.router)
+app.include_router(audio.router)
 
 # ─── Serve uploaded files ────────────────────────────────────────────────────
 os.makedirs("./uploads", exist_ok=True)
@@ -49,6 +54,7 @@ app.mount("/uploads", StaticFiles(directory="./uploads"), name="uploads")
 @app.on_event("startup")
 async def startup():
     """Initialize database tables and seed demo data."""
+    print(f"DATABASE PATH: {os.path.abspath('./gramai.db')}")
     create_tables()
     _seed_demo_user()
 
@@ -95,7 +101,7 @@ if __name__ == "__main__":
     import sys
     try:
         print("Starting GramAI Backend...")
-        uvicorn.run(app, host="0.0.0.0", port=8001)
+        uvicorn.run(app, host="0.0.0.0", port=8000)
     except Exception as e:
         print(f"FATAL ERROR: {e}")
         sys.exit(1)

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { getAgentColor, getAgentIcon, getAgentLabel, formatTime } from '../../utils/helpers';
+import FormattedResponse from '../FormattedResponse';
 
 export function ChatBubble({ message, index }) {
   const isUser = message.role === 'user';
@@ -36,7 +37,18 @@ export function ChatBubble({ message, index }) {
 
       {/* Bubble */}
       <div className={isUser ? 'bubble-user' : 'bubble-ai'}>
-        {message.content}
+        {!isUser ? (
+          <FormattedResponse text={message.content} />
+        ) : (
+          <p style={{
+            fontSize: "14px",
+            lineHeight: "1.7",
+            color: "#ffffff",
+            margin: "0"
+          }}>
+            {message.content}
+          </p>
+        )}
       </div>
 
       {/* Meta */}

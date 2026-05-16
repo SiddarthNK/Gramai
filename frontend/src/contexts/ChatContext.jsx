@@ -28,7 +28,6 @@ export function ChatProvider({ children }) {
       mode,
     };
     
-    // Add to both 'all' and the specific topic history
     setHistories(prev => ({
       ...prev,
       [activeTopic]: [...prev[activeTopic], userMsg],
@@ -50,6 +49,10 @@ export function ChatProvider({ children }) {
 
       const { response, agent, confidence, sources } = res.data;
 
+      if (res.data.error) {
+        throw new Error(res.data.error);
+      }
+
       const aiMsg = {
         id: Date.now() + 1,
         role: 'assistant',
@@ -62,33 +65,32 @@ export function ChatProvider({ children }) {
 
       setHistories(prev => {
         const next = { ...prev };
-        // Add to specific agent history
         if (agent && next[agent]) {
           next[agent] = [...next[agent], aiMsg];
         }
-        // Always add to 'all' history
         next.all = [...next.all, aiMsg];
-        
-        // If we are in 'all' view, the UI already gets 'next.all' via messages ref
         return next;
       });
     } catch (err) {
       if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') return;
-      const fallback = getOfflineFallback(content);
+      
+      console.error("AI Error:", err);
+      toast.error('Something went wrong. Please try again.');
+      
       const aiMsg = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: fallback.response,
-        agent: fallback.agent,
-        offline: true,
+        content: "I'm sorry, I encountered an error. Please try again later.",
+        agent: 'system',
+        error: true,
         timestamp: new Date().toISOString(),
       };
+      
       setHistories(prev => ({
         ...prev,
         all: [...prev.all, aiMsg],
-        [fallback.agent]: [...prev[fallback.agent], aiMsg]
+        [activeTopic]: [...prev[activeTopic], aiMsg]
       }));
-      toast('Offline mode — limited responses available', { icon: '📶' });
     } finally {
       setIsTyping(false);
     }
@@ -107,26 +109,6 @@ export function ChatProvider({ children }) {
       {children}
     </ChatContext.Provider>
   );
-}
-
-function getOfflineFallback(query) {
-  const q = query.toLowerCase();
-  if (q.includes('crop') || q.includes('plant') || q.includes('farm') || q.includes('leaf')) {
-    return {
-      agent: 'agriculture',
-      response: '🌾 [Offline Mode] For crop issues, ensure proper watering and check for pests. Upload a crop image when connected for AI disease detection.',
-    };
-  }
-  if (q.includes('fever') || q.includes('pain') || q.includes('sick') || q.includes('symptom')) {
-    return {
-      agent: 'medical',
-      response: '⚠️ [Offline Mode] For medical concerns, please consult a qualified doctor. In emergency, call 108. Stay hydrated and rest.',
-    };
-  }
-  return {
-    agent: 'education',
-    response: '📚 [Offline Mode] I can help you learn! Try asking me about science, math, or history when the connection is restored.',
-  };
 }
 
 export const useChat = () => {

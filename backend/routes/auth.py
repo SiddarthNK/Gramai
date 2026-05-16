@@ -45,25 +45,34 @@ def user_to_dict(user: User) -> dict:
 
 @router.post("/signup")
 def signup(req: SignupRequest, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == req.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+    print(f"Signup attempt for: {req.email}")
+    try:
+        if db.query(User).filter(User.email == req.email).first():
+            print(f"Signup failed: Email {req.email} already exists")
+            raise HTTPException(status_code=400, detail="Email already registered")
 
-    if len(req.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        if len(req.password) < 8:
+            print("Signup failed: Password too short")
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
-    user = User(
-        name=req.name,
-        email=req.email,
-        password_hash=hash_password(req.password),
-        location=req.location,
-        role=req.role,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+        user = User(
+            name=req.name,
+            email=req.email,
+            password_hash=hash_password(req.password),
+            location=req.location,
+            role=req.role,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        print(f"Signup successful for user ID: {user.id}")
 
-    token = create_access_token({"sub": str(user.id)})
-    return {"access_token": token, "token_type": "bearer", "user": user_to_dict(user)}
+        token = create_access_token({"sub": str(user.id)})
+        return {"access_token": token, "token_type": "bearer", "user": user_to_dict(user)}
+    except Exception as e:
+        print(f"CRITICAL SIGNUP ERROR: {str(e)}")
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=f"Internal server error during signup: {str(e)}")
 
 
 @router.post("/login")

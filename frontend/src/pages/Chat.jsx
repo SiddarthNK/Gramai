@@ -7,11 +7,46 @@ import { cropAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import { getAgentEmoji } from '../utils/helpers';
 
+const AGENT_CONFIG = {
+  agriculture: {
+    icon: "🌾",
+    title: "Ask KrishiBot anything",
+    subtitle: "Crop diseases · Fertilizers · Weather · Soil advice",
+    color: "#22c55e",
+    badge: "Agriculture AI",
+    placeholder: "Ask about your crops, diseases, soil..."
+  },
+  medical: {
+    icon: "🏥",
+    title: "Ask HealthBot anything",
+    subtitle: "Symptoms · Medicine · Health advice · First aid",
+    color: "#3b82f6",
+    badge: "Health Assistant",
+    placeholder: "Describe your symptoms or health question..."
+  },
+  education: {
+    icon: "🎓",
+    title: "Ask TutorBot anything",
+    subtitle: "Math · Science · English · Kannada · Quizzes",
+    color: "#a855f7",
+    badge: "Education AI",
+    placeholder: "Ask any subject question or concept..."
+  },
+  all: {
+    icon: "🤖",
+    title: "Ask GramAI anything",
+    subtitle: "Farming · Health · Education · Government schemes",
+    color: "#22c55e",
+    badge: "Gram AI",
+    placeholder: "Ask me anything..."
+  }
+};
+
 const AGENT_TABS = [
   { key: 'all',         label: 'All',         emoji: '🤖' },
   { key: 'agriculture', label: 'Agriculture', emoji: '🌾' },
-  { key: 'medical',     label: 'Medical',     emoji: '🩺' },
-  { key: 'education',   label: 'Education',   emoji: '📚' },
+  { key: 'medical',     label: 'Medical',     emoji: '🏥' },
+  { key: 'education',   label: 'Education',   emoji: '🎓' },
 ];
 
 export default function Chat() {
@@ -59,10 +94,10 @@ export default function Chat() {
                   display: 'inline-flex', alignItems: 'center', gap: 5,
                   padding: '5px 12px', borderRadius: 20, fontSize: 12,
                   border: '0.5px solid', cursor: 'pointer', transition: 'all 0.15s',
-                  fontFamily: 'Sora, sans-serif', fontWeight: activeTopic === t.key ? 500 : 400,
-                  background: activeTopic === t.key ? '#1D9E75' : 'var(--color-background-secondary)',
-                  color: activeTopic === t.key ? '#fff' : 'var(--color-text-secondary)',
-                  borderColor: activeTopic === t.key ? '#1D9E75' : 'var(--color-border-tertiary)',
+                  fontFamily: 'Sora, sans-serif', fontWeight: activeTopic === t.key ? 600 : 400,
+                  background: activeTopic === t.key ? `${AGENT_CONFIG[t.key].color}20` : 'var(--color-background-secondary)',
+                  color: activeTopic === t.key ? AGENT_CONFIG[t.key].color : 'var(--color-text-secondary)',
+                  borderColor: activeTopic === t.key ? AGENT_CONFIG[t.key].color : 'var(--color-border-tertiary)',
                 }}
               >
                 <span>{t.emoji}</span> {t.label}
@@ -103,16 +138,43 @@ export default function Chat() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              style={{ textAlign: 'center', marginTop: 80 }}
+              style={{ textAlign: 'center', marginTop: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}
             >
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🌾</div>
-              <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 8 }}>
-                Ask GramAI anything
+              <style>{`
+                @keyframes pulse {
+                  0%, 100% { opacity: 0.3; transform: scale(0.8) }
+                  50% { opacity: 1; transform: scale(1) }
+                }
+              `}</style>
+              <div style={{ 
+                fontSize: 56, lineHeight: 1, 
+                filter: `drop-shadow(0 0 12px ${AGENT_CONFIG[activeTopic]?.color || '#1D9E75'})`,
+                transition: 'all 0.3s ease' 
+              }}>
+                {AGENT_CONFIG[activeTopic]?.icon || '🤖'}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-                Crop diseases · Medical advice · Education help<br />
+
+              <span style={{
+                fontSize: '11px', fontWeight: '600', letterSpacing: '1.5px', textTransform: 'uppercase',
+                color: AGENT_CONFIG[activeTopic]?.color || '#1D9E75',
+                border: `1px solid ${(AGENT_CONFIG[activeTopic]?.color || '#1D9E75')}40`,
+                borderRadius: '20px', padding: '4px 12px',
+                background: `${(AGENT_CONFIG[activeTopic]?.color || '#1D9E75')}15`
+              }}>
+                {AGENT_CONFIG[activeTopic]?.badge || 'Gram AI'}
+              </span>
+
+              <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--color-text-primary)', margin: '0' }}>
+                {AGENT_CONFIG[activeTopic]?.title || 'Ask GramAI anything'}
+              </h2>
+
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '0', lineHeight: '1.6' }}>
+                {AGENT_CONFIG[activeTopic]?.subtitle || 'Farming · Health · Education · Government schemes'}
+              </p>
+
+              <p style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', margin: '0' }}>
                 Supports English & ಕನ್ನಡ · Voice enabled
-              </div>
+              </p>
             </motion.div>
           )}
           <AnimatePresence>

@@ -1,223 +1,238 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { voiceAPI } from '../services/api';
+import { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useChat } from '../contexts/ChatContext';
-import { ChatBubble } from '../components/chat/ChatBubble';
 import toast from 'react-hot-toast';
-
-const WAVE_COUNT = 24;
+import FormattedResponse from '../components/FormattedResponse';
 
 export default function Voice() {
-  const { sendMessage, messages, language, setLanguage } = useChat();
-  const [state, setState] = useState('idle'); // idle | recording | processing | speaking
-  const [transcript, setTranscript] = useState('');
-  const [audioUrl, setAudioUrl] = useState(null);
-  const mediaRef = useRef(null);
-  const chunksRef = useRef([]);
-  const audioRef = useRef(null);
-  const [amplitudes, setAmplitudes] = useState(Array(WAVE_COUNT).fill(4));
-  const animRef = useRef(null);
+  const [recording, setRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [transcribedText, setTranscribedText] = useState("");
+  const [aiResponse, setAiResponse] = useState("");
+  const [error, setError] = useState(null);
+  const { language } = useChat();
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const responseEndRef = useRef(null);
 
-  const animateWave = useCallback(() => {
-    setAmplitudes(prev => prev.map(() => Math.random() * 28 + 4));
-    animRef.current = requestAnimationFrame(() => {
-      setTimeout(animateWave, 80);
-    });
-  }, []);
-
-  const stopAnimation = useCallback(() => {
-    cancelAnimationFrame(animRef.current);
-    setAmplitudes(Array(WAVE_COUNT).fill(4));
-  }, []);
-
-  const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
-      chunksRef.current = [];
-      mr.ondataavailable = e => chunksRef.current.push(e.data);
-      mr.onstop = async () => {
-        stopAnimation();
-        setState('processing');
-        stream.getTracks().forEach(t => t.stop());
-        try {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-          const fd = new FormData();
-          fd.append('audio', blob, 'voice.webm');
-          fd.append('language', language);
-
-          const sttRes = await voiceAPI.transcribe(fd);
-          const text = sttRes.data.text?.trim();
-          if (!text) { setState('idle'); toast('No speech detected', { icon: '🎤' }); return; }
-          setTranscript(text);
-
-          // Send to AI
-          await sendMessage(text, 'voice');
-          const lastMsg = messages[messages.length - 1];
-          const responseText = lastMsg?.content || '';
-
-          // TTS
-          setState('speaking');
-          try {
-            const ttsRes = await voiceAPI.synthesize({ text: responseText, language });
-            const url = URL.createObjectURL(ttsRes.data);
-            setAudioUrl(url);
-            const audio = new Audio(url);
-            audioRef.current = audio;
-            audio.onended = () => setState('idle');
-            audio.play();
-          } catch {
-            setState('idle');
-          }
-        } catch {
-          setState('idle');
-          toast.error('Voice processing failed');
-        }
-      };
-      mr.start();
-      mediaRef.current = mr;
-      setState('recording');
-      animateWave();
-    } catch {
-      toast.error('Microphone access denied');
+  useEffect(() => {
+    if (responseEndRef.current) {
+      responseEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [language, sendMessage, animateWave, stopAnimation, messages]);
+  }, [transcribedText, aiResponse]);
+
+  const startRecording = async () => {
+    try {
+      setTranscribedText("");
+      setAiResponse("");
+      setError(null);
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        }
+      });
+      
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : "audio/ogg";
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        
+        if (audioBlob.size < 1000) {
+          setError("Recording too short. Please speak for at least 2 seconds.");
+          return;
+        }
+
+        await handleTranscription(audioBlob, mimeType);
+      };
+      
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(100);
+      setRecording(true);
+    } catch (err) {
+      console.error("Microphone error:", err);
+      if (err.name === "NotAllowedError") {
+        setError("Microphone access denied. Please allow microphone in browser settings.");
+      } else {
+        setError("Could not start recording: " + err.message);
+      }
+    }
+  };
 
   const stopRecording = () => {
-    mediaRef.current?.stop();
+    if (mediaRecorderRef.current && recording) {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    }
   };
 
-  const stopSpeaking = () => {
-    audioRef.current?.pause();
-    setState('idle');
+  const handleTranscription = async (audioBlob, mimeType) => {
+    try {
+      setIsProcessing(true);
+      setError("");
+
+      const token = localStorage.getItem('gram_token');
+      const extension = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
+      
+      const formData = new FormData();
+      formData.append("file", audioBlob, `recording.${extension}`);
+
+      const transcribeRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/audio/transcribe`, {
+        method: "POST",
+        headers: token ? { "Authorization": `Bearer ${token}` } : {},
+        body: formData
+      });
+
+      if (!transcribeRes.ok) {
+        throw new Error(`Transcription HTTP error: ${transcribeRes.status}`);
+      }
+
+      const transcribeData = await transcribeRes.json();
+      if (!transcribeData.success || !transcribeData.text) {
+        setError("Could not understand audio. Please speak clearly.");
+        return;
+      }
+
+      const spokenText = transcribeData.text.trim();
+      setTranscribedText(spokenText);
+
+      // Get AI response
+      const aiRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/chat/message`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          message: spokenText,
+          session_id: `voice_session_${Date.now()}`,
+          language: language || "en",
+          topic: "agriculture"
+        })
+      });
+
+      if (!aiRes.ok) {
+        const errText = await aiRes.text();
+        throw new Error(`AI HTTP ${aiRes.status}: ${errText}`);
+      }
+
+      const aiData = await aiRes.json();
+      if (aiData.response) {
+        setAiResponse(aiData.response);
+      } else {
+        setError("AI did not return a response. Please try again.");
+      }
+
+    } catch (err) {
+      console.error("[VOICE] Full error:", err);
+      setError("Voice processing failed: " + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
   };
-
-  useEffect(() => () => stopAnimation(), [stopAnimation]);
-
-  const voiceMessages = messages.filter(m => m.mode === 'voice' || m.role === 'user');
-
-  const stateConfig = {
-    idle:       { color: '#1D9E75', icon: 'ti-microphone', label: 'Tap to speak',     btnLabel: 'Start' },
-    recording:  { color: '#E53E3E', icon: 'ti-square-filled', label: 'Listening…',    btnLabel: 'Stop'  },
-    processing: { color: '#EF9F27', icon: 'ti-loader-2',  label: 'Processing…',       btnLabel: '…'     },
-    speaking:   { color: '#378ADD', icon: 'ti-volume',    label: 'AI is speaking…',   btnLabel: 'Stop'  },
-  };
-  const sc = stateConfig[state];
 
   return (
-    <div className="content" style={{ alignItems: 'center', justifyContent: 'center', gap: 32 }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{
-          background: 'var(--color-background-primary)',
-          border: '0.5px solid var(--color-border-tertiary)',
-          borderRadius: 20, padding: 32, width: '100%', maxWidth: 480,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24,
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, height: '100%', overflow: 'hidden' }}>
+      <div style={{ textAlign: 'center', marginBottom: 30, flexShrink: 0 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Voice Assistant</h1>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
+          Stand-alone voice section. Auto-scrolling enabled.
+        </p>
+      </div>
+
+      <div style={{ position: 'relative', width: 140, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 20 }}>
+        {recording && (
+          <motion.div
+            animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.1, 0.3] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+            style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', background: '#1D9E75' }}
+          />
+        )}
+        
+        <button
+          onClick={recording ? stopRecording : startRecording}
+          disabled={isProcessing}
+          style={{
+            width: 80, height: 80, borderRadius: '50%', border: 'none',
+            background: recording ? '#EF4444' : '#1D9E75',
+            color: '#fff', fontSize: 28, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.1)', zIndex: 2
+          }}
+        >
+          {isProcessing ? (
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+              <i className="ti ti-loader-2" />
+            </motion.div>
+          ) : (
+            <i className={`ti ti-mic${recording ? '-filled' : ''}`} />
+          )}
+        </button>
+      </div>
+
+      <div style={{ marginBottom: 20, textAlign: 'center', flexShrink: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: recording ? '#EF4444' : 'var(--color-text-tertiary)' }}>
+          {recording ? 'Recording... Tap to stop' : isProcessing ? 'Processing...' : 'Tap to Start'}
+        </div>
+        {error && <div style={{ marginTop: 8, color: '#EF4444', fontSize: 12 }}>⚠️ {error}</div>}
+      </div>
+
+      <div 
+        className="voice-scroll-area"
+        style={{ 
+          width: '100%', 
+          maxWidth: 500, 
+          flex: 1,
+          overflowY: 'auto',
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 16,
+          padding: '10px 16px',
+          background: 'rgba(0,0,0,0.02)',
+          borderRadius: 16,
+          border: '1px solid var(--color-border-tertiary)',
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#1D9E75 transparent'
         }}
       >
-        {/* Language toggle */}
-        <div className="lang-toggle">
-          <button className={`lang-btn ${language === 'en' ? 'active' : ''}`} onClick={() => setLanguage('en')}>EN</button>
-          <button className={`lang-btn ${language === 'kn' ? 'active' : ''}`} onClick={() => setLanguage('kn')}>ಕನ್ನಡ</button>
-        </div>
+        <style>{`
+          .voice-scroll-area::-webkit-scrollbar { width: 4px; }
+          .voice-scroll-area::-webkit-scrollbar-track { background: transparent; }
+          .voice-scroll-area::-webkit-scrollbar-thumb { background: #1D9E75; border-radius: 4px; }
+          .voice-scroll-area::-webkit-scrollbar-thumb:hover { background: #178F68; }
+        `}</style>
 
-        {/* Big mic button */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {state === 'recording' && (
-            <>
-              <motion.div
-                animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0, 0.3] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-                style={{ position: 'absolute', width: 120, height: 120, borderRadius: '50%', background: '#E53E3E' }}
-              />
-              <motion.div
-                animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0, 0.2] }}
-                transition={{ repeat: Infinity, duration: 1.5, delay: 0.3 }}
-                style={{ position: 'absolute', width: 100, height: 100, borderRadius: '50%', background: '#E53E3E' }}
-              />
-            </>
-          )}
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={state === 'idle' ? startRecording : state === 'recording' ? stopRecording : state === 'speaking' ? stopSpeaking : undefined}
-            disabled={state === 'processing'}
-            style={{
-              width: 80, height: 80, borderRadius: '50%',
-              background: sc.color, border: 'none', cursor: state === 'processing' ? 'wait' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              zIndex: 1, position: 'relative',
-            }}
-            aria-label={sc.label}
-          >
-            <i className={`ti ${sc.icon}`} style={{
-              fontSize: 32, color: '#fff',
-              animation: state === 'processing' ? 'spin 1s linear infinite' : 'none',
-            }} />
-          </motion.button>
-        </div>
-
-        {/* State label */}
-        <motion.div
-          key={state}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ fontSize: 15, color: 'var(--color-text-secondary)', textAlign: 'center' }}
-        >
-          {sc.label}
-        </motion.div>
-
-        {/* Waveform */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3, height: 48, width: '100%' }}>
-          {amplitudes.map((h, i) => (
-            <motion.div
-              key={i}
-              animate={{ height: state === 'recording' ? h : 4 }}
-              transition={{ duration: 0.08 }}
-              style={{
-                flex: 1, borderRadius: 2,
-                background: sc.color,
-                opacity: state === 'idle' ? 0.3 : 1,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Transcript */}
-        <AnimatePresence>
-          {transcript && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              style={{
-                width: '100%', padding: '12px 14px',
-                background: 'var(--color-background-secondary)',
-                borderRadius: 10, fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5,
-                border: '0.5px solid var(--color-border-tertiary)',
-              }}
-            >
-              <span style={{ fontSize: 10, fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-tertiary)', display: 'block', marginBottom: 4 }}>YOU SAID</span>
-              {transcript}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textAlign: 'center', lineHeight: 1.6 }}>
-          Supports English and ಕನ್ನಡ<br />
-          Speech → AI Agent → Voice Response
-        </div>
-      </motion.div>
-
-      {/* Recent voice chats */}
-      {messages.length > 0 && (
-        <div style={{ width: '100%', maxWidth: 480 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 12, fontFamily: 'JetBrains Mono, monospace' }}>RECENT INTERACTIONS</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {messages.slice(-4).map((m, i) => <ChatBubble key={m.id} message={m} index={i} />)}
-          </div>
-        </div>
-      )}
+        {transcribedText && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ padding: 14, background: 'var(--color-background-secondary)', borderRadius: 12, border: '1px solid var(--color-border-tertiary)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-tertiary)', marginBottom: 4, textTransform: 'uppercase' }}>You said:</div>
+            <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{transcribedText}</div>
+          </motion.div>
+        )}
+        
+        {aiResponse && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ padding: 14, background: '#E1F5EE', borderRadius: 12, border: '1px solid #9FE1CB' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#1D9E75', marginBottom: 4, textTransform: 'uppercase' }}>Gram AI Response:</div>
+            <FormattedResponse text={aiResponse} />
+          </motion.div>
+        )}
+        
+        <div ref={responseEndRef} />
+      </div>
     </div>
   );
 }

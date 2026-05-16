@@ -7,10 +7,10 @@
   --color-background-primary:   #FFFFFF;
   --color-background-secondary: #F5F5F3;
   --color-background-tertiary:  #EDEDE9;
-  --color-text-primary:         #1A1A18;
-  --color-text-secondary:       #636360;
-  --color-text-tertiary:        #9C9C99;
-  --color-border-tertiary:      #E0E0DA;
+  --color-text-primary:         #000000;
+  --color-text-secondary:       #111827;
+  --color-text-tertiary:        #374151;
+  --color-border-tertiary:      #D1D5DB;
   --border-radius-md:           8px;
   --border-radius-lg:           12px;
   --border-radius-xl:           16px;
@@ -22,10 +22,20 @@
   --color-background-primary:   #141413;
   --color-background-secondary: #1E1E1C;
   --color-background-tertiary:  #252522;
-  --color-text-primary:         #F0F0EE;
-  --color-text-secondary:       #A8A8A4;
-  --color-text-tertiary:        #6E6E6A;
-  --color-border-tertiary:      #2E2E2B;
+  --color-text-primary:         #FFFFFF;
+  --color-text-secondary:       #F9FAFB;
+  --color-text-tertiary:        #D1D5DB;
+  --color-border-tertiary:      #374151;
+}
+
+:root.light {
+  --color-background-primary:   #FFFFFF;
+  --color-background-secondary: #F9FAFB;
+  --color-background-tertiary:  #F3F4F6;
+  --color-text-primary:         #000000;
+  --color-text-secondary:       #111827;
+  --color-text-tertiary:        #374151;
+  --color-border-tertiary:      #D1D5DB;
 }
 
 /* ─── Global Reset ─── */
@@ -283,6 +293,11 @@ body {
   0% { background-position: -200px 0; }
   100% { background-position: calc(200px + 100%) 0; }
 }
+@keyframes spin {
+  to { transform: rotate(360deg) }
+}
+.animate-spin { animation: spin 0.8s linear infinite; }
+
 .animate-fade-in { animation: fadeIn 0.3s ease; }
 .animate-slide-up { animation: slideUp 0.35s ease; }
 
@@ -332,10 +347,10 @@ body {
 
 /* ─── Pulse dot ─── */
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%, 100% { opacity: 0.3; transform: scale(0.8) }
+  50% { opacity: 1; transform: scale(1) }
 }
-.pulse-dot { animation: pulse 2s ease-in-out infinite; }
+.pulse-dot { animation: pulse 1s ease-in-out infinite; }
 
 /* ─── Auth card ─── */
 .auth-card {

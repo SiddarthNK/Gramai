@@ -1,223 +1,225 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cropAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
-const DISEASES = {
-  'Early Blight':    { treatment: 'Apply copper-based fungicide every 7 days. Remove affected leaves immediately.', prevention: 'Rotate crops annually. Avoid overhead watering. Maintain proper spacing.' },
-  'Late Blight':     { treatment: 'Use Metalaxyl + Mancozeb fungicide. Destroy infected plants immediately.', prevention: 'Use resistant varieties. Ensure good air circulation. Avoid wet foliage.' },
-  'Leaf Spot':       { treatment: 'Apply neem oil or copper hydroxide spray weekly.', prevention: 'Remove fallen leaves. Water at soil level. Avoid nitrogen over-fertilization.' },
-  'Rust':            { treatment: 'Apply sulfur-based fungicide or triazole fungicide.', prevention: 'Plant rust-resistant varieties. Remove infected debris. Monitor humidity.' },
-  'Mosaic Virus':    { treatment: 'No cure — remove infected plants to stop spread.', prevention: 'Control aphid vectors. Use virus-free seeds. Disinfect tools regularly.' },
-  'Powdery Mildew':  { treatment: 'Spray potassium bicarbonate or sulfur fungicide.', prevention: 'Improve air circulation. Avoid high humidity. Water in morning hours.' },
-  'Healthy':         { treatment: 'No treatment needed — crop looks healthy!', prevention: 'Maintain regular monitoring, watering schedule, and balanced fertilization.' },
-};
-
 export default function CropUpload() {
-  const [dragOver, setDragOver] = useState(false);
-  const [image, setImage]       = useState(null);   // { file, preview }
-  const [result, setResult]     = useState(null);
-  const [loading, setLoading]   = useState(false);
-  const fileRef = useRef(null);
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  
+  const resultRef = useRef(null);
 
-  const analyzeImage = useCallback(async (file) => {
-    const preview = URL.createObjectURL(file);
-    setImage({ file, preview });
-    setResult(null);
-    setLoading(true);
+  useEffect(() => {
+    if (result && resultRef.current) {
+      resultRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [result]);
+
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0];
+    if (selected) {
+      setFile(selected);
+      setPreview(URL.createObjectURL(selected));
+      setResult(null);
+      setError(null);
+    }
+  };
+
+  const scanDisease = async () => {
+    if (!file) return;
+
     try {
-      const fd = new FormData();
-      fd.append('image', file);
-      const res = await cropAPI.uploadImage(fd);
+      setLoading(true);
+      setError(null);
       
-      if (res.data.error) {
-        setResult(null);
-        setImage(null);
-        toast.error(res.data.error, { duration: 5000, icon: '🚫' });
-      } else {
-        setResult(res.data);
-        toast.success(`Analysis complete: ${res.data.disease}`);
-      }
-    } catch {
-      // Demo fallback when backend not connected
-      const diseases = Object.keys(DISEASES);
-      const randomDisease = diseases[Math.floor(Math.random() * (diseases.length - 1))];
-      const confidence = (Math.random() * 0.25 + 0.72).toFixed(3);
-      setResult({
-        disease: randomDisease,
-        confidence: parseFloat(confidence),
-        treatment: DISEASES[randomDisease].treatment,
-        prevention: DISEASES[randomDisease].prevention,
-        model: 'PlantVillage-CNN (demo)',
-        offline: true,
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/scan/disease`, {
+        method: "POST",
+        body: formData
       });
-      toast('Demo mode — connect backend for real AI analysis', { icon: '🔬' });
+      
+      const resData = await response.json();
+      
+      if (resData.success) {
+        setResult(resData.data);
+      } else {
+        setError(resData.error || "Scan failed. Please try again.");
+      }
+      
+    } catch (err) {
+      console.error("Scanner error:", err);
+      setError("Scanner failed. Check your connection.");
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file?.type.startsWith('image/')) analyzeImage(file);
-    else toast.error('Please drop an image file');
-  };
-
-  const handleFile = (e) => {
-    const file = e.target.files[0];
-    if (file) analyzeImage(file);
-    e.target.value = '';
-  };
-
-  const severityColor = (conf) => {
-    if (result?.disease === 'Healthy') return { bg: '#E1F5EE', border: '#9FE1CB', text: '#0F6E56' };
-    if (conf > 0.85) return { bg: '#FDE8E8', border: '#F5ACAC', text: '#9B2121' };
-    if (conf > 0.70) return { bg: '#FAEEDA', border: '#F5CFA0', text: '#854F0B' };
-    return { bg: '#E1F5EE', border: '#9FE1CB', text: '#0F6E56' };
   };
 
   return (
-    <div className="content" style={{ maxWidth: 800, margin: '0 auto', width: '100%' }}>
-      <div>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text-primary)', letterSpacing: '-0.3px' }}>Crop Disease Scanner</h1>
-        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>Upload a crop photo for instant AI-powered disease detection</p>
+    <div style={{ padding: 24, maxWidth: 800, margin: '0 auto', height: '100%', overflowY: 'auto' }}>
+      <style>{`
+        .scanner-scroll-area::-webkit-scrollbar { width: 4px; }
+        .scanner-scroll-area::-webkit-scrollbar-track { background: transparent; }
+        .scanner-scroll-area::-webkit-scrollbar-thumb { background: #1D9E75; border-radius: 4px; }
+        .scanner-scroll-area::-webkit-scrollbar-thumb:hover { background: #178F68; }
+      `}</style>
+
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 8 }}>Crop Disease Scanner</h1>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>Upload a photo of your crop's leaf for instant AI diagnosis and treatment.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: image ? '1fr 1fr' : '1fr', gap: 20 }}>
-        {/* Upload zone */}
-        <motion.div layout>
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
-          <div
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => !image && fileRef.current?.click()}
-            style={{
-              border: `2px dashed ${dragOver ? '#1D9E75' : 'var(--color-border-tertiary)'}`,
-              borderRadius: 16, background: dragOver ? 'rgba(29,158,117,0.04)' : 'var(--color-background-secondary)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              cursor: image ? 'default' : 'pointer', transition: 'all 0.2s',
-              minHeight: 280, position: 'relative', overflow: 'hidden',
+      <div style={{ 
+        background: 'var(--color-background-secondary)', 
+        borderRadius: 16, 
+        padding: 32, 
+        border: '1px dashed var(--color-border-tertiary)',
+        textAlign: 'center',
+        marginBottom: 32
+      }}>
+        {!preview ? (
+          <label style={{ cursor: 'pointer', display: 'block' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📸</div>
+            <div style={{ fontWeight: 500, marginBottom: 8 }}>Click to upload or drag and drop</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>JPG, PNG or WebP (max 10MB)</div>
+            <input type="file" hidden onChange={handleFileChange} accept="image/*" />
+          </label>
+        ) : (
+          <div>
+            <img src={preview} alt="Preview" style={{ maxWidth: '100%', maxHeight: 250, borderRadius: 12, marginBottom: 20, objectFit: 'contain' }} />
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button 
+                onClick={() => { setFile(null); setPreview(null); setResult(null); }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--color-border-tertiary)', background: 'none', cursor: 'pointer', fontSize: 13 }}
+              >
+                Clear
+              </button>
+              <button 
+                onClick={scanDisease}
+                disabled={loading}
+                style={{ 
+                  padding: '8px 20px', borderRadius: 8, border: 'none', 
+                  background: '#1D9E75', color: '#fff', fontWeight: 600, cursor: 'pointer',
+                  opacity: loading ? 0.7 : 1, fontSize: 13
+                }}
+              >
+                {loading ? 'Analyzing...' : 'Scan Now'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {error && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 24, padding: 16, background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 12, color: '#991B1B', fontSize: 14 }}>
+            ⚠️ {error}
+          </motion.div>
+        )}
+
+        {result && (
+          <motion.div 
+            ref={resultRef}
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="scanner-scroll-area"
+            style={{ 
+              marginTop: 10,
+              paddingBottom: 40,
+              maxHeight: '70vh',
+              overflowY: 'auto',
+              padding: '4px 2px',
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#1D9E75 transparent'
             }}
           >
-            <AnimatePresence mode="wait">
-              {image ? (
-                <motion.div key="preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ width: '100%', height: '100%', position: 'relative' }}>
-                  <img src={image.preview} alt="Crop preview" style={{ width: '100%', height: 280, objectFit: 'cover', borderRadius: 14 }} />
-                  <button
-                    onClick={() => { setImage(null); setResult(null); }}
-                    style={{
-                      position: 'absolute', top: 10, right: 10,
-                      width: 28, height: 28, borderRadius: '50%',
-                      background: 'rgba(0,0,0,0.5)', border: 'none', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    <i className="ti ti-x" style={{ fontSize: 14, color: '#fff' }} />
-                  </button>
-                  {loading && (
-                    <div style={{
-                      position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)',
-                      borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexDirection: 'column', gap: 12,
-                    }}>
-                      <i className="ti ti-loader-2" style={{ fontSize: 36, color: '#fff', animation: 'spin 1s linear infinite' }} />
-                      <span style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>Analyzing with AI…</span>
-                    </div>
-                  )}
-                </motion.div>
-              ) : (
-                <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: 32 }}>
-                  <div style={{ width: 64, height: 64, borderRadius: 16, background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                    <i className="ti ti-leaf" style={{ fontSize: 28, color: '#1D9E75' }} />
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 6 }}>Drop crop image here</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
-                    Supports JPG, PNG, WebP<br />Tomato, Potato, Wheat, Rice and more
-                  </div>
-                  <button className="btn-primary" onClick={() => fileRef.current?.click()}>
-                    <i className="ti ti-upload" style={{ fontSize: 14 }} /> Upload Photo
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {image && !loading && (
-            <button className="btn-secondary" style={{ width: '100%', marginTop: 10 }} onClick={() => fileRef.current?.click()}>
-              <i className="ti ti-refresh" style={{ fontSize: 14, marginRight: 6 }} /> Upload Different Image
-            </button>
-          )}
-        </motion.div>
-
-        {/* Result panel */}
-        <AnimatePresence>
-          {result && !loading && (
-            <motion.div key="result" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-              <div style={{
-                padding: '16px',
-                borderRadius: 16,
-                border: `0.5px solid ${severityColor(result.confidence).border}`,
-                background: severityColor(result.confidence).bg,
-                marginBottom: 14,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: severityColor(result.confidence).text }}>{result.disease}</div>
-                    {result.offline && <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)', fontFamily: 'JetBrains Mono' }}>demo mode</span>}
+            {!result.is_plant ? (
+              <div style={{ padding: 24, background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>🚫</div>
+                <div style={{ fontWeight: 600, color: '#9A3412' }}>No plant detected</div>
+                <div style={{ color: '#C2410C', fontSize: 13 }}>Please upload a clear plant photo.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: 'var(--color-background-secondary)', padding: 16, borderRadius: 16, border: '1px solid var(--color-border-tertiary)' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--color-text-tertiary)', letterSpacing: 1, fontWeight: 700 }}>Detected Crop</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>{result.crop_detected}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: severityColor(result.confidence).text, fontFamily: 'JetBrains Mono' }}>
-                      {Math.round(result.confidence * 100)}%
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--color-text-tertiary)', letterSpacing: 1, fontWeight: 700 }}>Condition</div>
+                    <div style={{ 
+                      fontSize: 16, fontWeight: 700, 
+                      color: result.disease_detected === 'Healthy' ? '#10B981' : '#EF4444' 
+                    }}>
+                      {result.disease_detected}
                     </div>
-                    <div style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>confidence</div>
+                  </div>
+                  <div style={{ padding: '6px 10px', borderRadius: 10, background: result.severity === 'Severe' ? '#FEF2F2' : '#F0FDF4', color: result.severity === 'Severe' ? '#EF4444' : '#10B981', fontWeight: 700, fontSize: 11 }}>
+                    {result.severity}
                   </div>
                 </div>
-                {/* Confidence bar */}
-                <div style={{ height: 4, background: 'rgba(255,255,255,0.5)', borderRadius: 2 }}>
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${Math.round(result.confidence * 100)}%` }} transition={{ duration: 0.8, ease: 'easeOut' }}
-                    style={{ height: '100%', background: severityColor(result.confidence).text, borderRadius: 2 }} />
-                </div>
-                {result.model && <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', fontFamily: 'JetBrains Mono', marginTop: 6 }}>Model: {result.model}</div>}
-              </div>
 
-              {/* Treatment */}
-              <div className="panel" style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className="ti ti-first-aid-kit" style={{ fontSize: 14, color: '#185FA5' }} />
+                {result.confidence < 60 && (
+                  <div style={{ padding: 10, background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, color: '#92400E', fontSize: 12 }}>
+                    ⚠️ Low confidence result ({result.confidence}%). Try a closer photo.
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>Treatment</span>
-                </div>
-                <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.65 }}>{result.treatment}</p>
-              </div>
+                )}
 
-              {/* Prevention */}
-              <div className="panel">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className="ti ti-shield-check" style={{ fontSize: 14, color: '#0F6E56' }} />
-                  </div>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>Prevention</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <Card title="Symptoms" content={result.symptoms} icon="🔍" />
+                  <Card title="Causes" content={result.causes} icon="🧬" />
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.65 }}>{result.prevention}</p>
+
+                <div style={{ background: 'var(--color-background-secondary)', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--color-border-tertiary)' }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-tertiary)', fontWeight: 600, fontSize: 14 }}>Treatment Options</div>
+                  <div style={{ display: 'flex' }}>
+                    <div style={{ flex: 1, padding: 16, borderRight: '1px solid var(--color-border-tertiary)' }}>
+                      <div style={{ color: '#059669', fontWeight: 700, fontSize: 12, marginBottom: 6 }}>🌿 Organic Treatment</div>
+                      <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{result.organic_treatment}</div>
+                    </div>
+                    <div style={{ flex: 1, padding: 16 }}>
+                      <div style={{ color: '#2563EB', fontWeight: 700, fontSize: 12, marginBottom: 6 }}>🧪 Chemical Treatment</div>
+                      <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{result.chemical_treatment}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <Card title="Fertilizer Tip" content={result.fertilizer_tip} icon="🧪" />
+                  <Card title="Prevention" content={result.prevention} icon="🛡️" />
+                </div>
+
+                <div style={{ background: '#EEF2FF', padding: 20, borderRadius: 16, border: '1px solid #C7D2FE', marginBottom: 20 }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ fontSize: 20 }}>💡</div>
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#3730A3', marginBottom: 4, fontSize: 14 }}>Farmer Advice</div>
+                      <div style={{ color: '#4338CA', fontSize: 13, lineHeight: 1.5 }}>{result.farmer_advice}</div>
+                      <div style={{ marginTop: 10, fontSize: 11, color: '#6366F1', fontWeight: 600 }}>Estimate recovery: {result.recovery_estimate}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function Card({ title, content, icon }) {
+  return (
+    <div style={{ background: 'var(--color-background-secondary)', padding: 16, borderRadius: 16, border: '1px solid var(--color-border-tertiary)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <span style={{ fontSize: 16 }}>{icon}</span>
+        <span style={{ fontWeight: 700, fontSize: 13 }}>{title}</span>
       </div>
-
-      {/* Supported crops info */}
-      <div className="panel">
-        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 14 }}>Supported Crops & Diseases</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {['🍅 Tomato', '🥔 Potato', '🌾 Wheat', '🌿 Rice', '🌽 Corn', '🍇 Grape', '🍎 Apple', '🫑 Pepper'].map(c => (
-            <span key={c} style={{ fontSize: 12, padding: '4px 12px', borderRadius: 20, background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #9FE1CB' }}>{c}</span>
-          ))}
-        </div>
-      </div>
+      <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>{content}</div>
     </div>
   );
 }
