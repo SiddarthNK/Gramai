@@ -37,13 +37,6 @@ async def analyze_crop(
     if "error" in result:
         return result
 
-@router.post("/disease", tags=["scan"])
-async def scan_disease_alias(file: UploadFile = File(...)):
-    """Alias for /api/crop/analyze to match user requirement."""
-    content = await file.read()
-    result = await analyze_crop_image(content, filename=file.filename or "")
-    return {"success": True, "data": result}
-
     # Save image
     fname = f"{uuid.uuid4().hex}.jpg"
     fpath = os.path.join(UPLOAD_DIR, fname)
@@ -80,6 +73,14 @@ async def scan_disease_alias(file: UploadFile = File(...)):
         db.commit()
 
     return result
+
+
+@router.post("/disease", tags=["scan"])
+async def scan_disease_alias(file: UploadFile = File(...)):
+    """Alias for /api/crop/analyze to match user requirement."""
+    content = await file.read()
+    result = await analyze_crop_image(content, filename=file.filename or "")
+    return {"success": True, "data": result}
 
 
 @router.get("/reports")

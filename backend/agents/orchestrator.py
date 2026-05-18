@@ -51,7 +51,7 @@ def classify_intent(text: str) -> dict:
         scores['education'] = scores.get('education', 0) + len(matches) * 2
 
     if not any(scores.values()):
-        return {"agent": "agriculture", "confidence": 0.5, "is_emergency": is_emergency}
+        return {"agent": "assistant", "confidence": 0.5, "is_emergency": is_emergency}
 
     total = sum(scores.values())
     best_agent = max(scores, key=scores.get)
@@ -77,8 +77,12 @@ class OrchestratorAgent:
         routing = classify_intent(message)
         routing["language"] = final_lang
         
-        if forced_agent and forced_agent in ["agriculture", "medical", "education"]:
-            routing["agent"] = forced_agent
+        valid_agents = ["agriculture", "medical", "education", "assistant", "grammar", "planner", "all", "general"]
+        if forced_agent and forced_agent in valid_agents:
+            if forced_agent in ["all", "general"]:
+                routing["agent"] = "assistant"
+            else:
+                routing["agent"] = forced_agent
             routing["confidence"] = 1.0
 
         return routing

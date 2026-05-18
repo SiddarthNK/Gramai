@@ -10,44 +10,101 @@ import { getAgentEmoji } from '../utils/helpers';
 const AGENT_CONFIG = {
   agriculture: {
     icon: "🌾",
-    title: "Ask KrishiBot anything",
-    subtitle: "Crop diseases · Fertilizers · Weather · Soil advice",
+    title: "Ask KrishiBot",
+    subtitle: "Crops · Diseases · Fertilizers · Weather",
     color: "#22c55e",
     badge: "Agriculture AI",
-    placeholder: "Ask about your crops, diseases, soil..."
+    placeholder: "Ask about crops, soil, diseases..."
   },
   medical: {
     icon: "🏥",
-    title: "Ask HealthBot anything",
-    subtitle: "Symptoms · Medicine · Health advice · First aid",
+    title: "Ask HealthBot",
+    subtitle: "Symptoms · Medicine · Health advice",
     color: "#3b82f6",
-    badge: "Health Assistant",
-    placeholder: "Describe your symptoms or health question..."
+    badge: "Health AI",
+    placeholder: "Describe your symptoms..."
   },
   education: {
     icon: "🎓",
-    title: "Ask TutorBot anything",
-    subtitle: "Math · Science · English · Kannada · Quizzes",
+    title: "Ask TutorBot",
+    subtitle: "Math · Science · Any subject",
     color: "#a855f7",
     badge: "Education AI",
-    placeholder: "Ask any subject question or concept..."
+    placeholder: "Ask any study question..."
   },
   all: {
     icon: "🤖",
-    title: "Ask GramAI anything",
-    subtitle: "Farming · Health · Education · Government schemes",
-    color: "#22c55e",
-    badge: "Gram AI",
-    placeholder: "Ask me anything..."
+    title: "Personal Assistant",
+    subtitle: "Weather · Time · Planning · Anything",
+    color: "#f59e0b",
+    badge: "AI Assistant",
+    placeholder: "Ask me anything at all..."
+  },
+  grammar: {
+    icon: "✍️",
+    title: "Grammar Fixer",
+    subtitle: "Correct · Improve · Rewrite text",
+    color: "#ec4899",
+    badge: "Writing AI",
+    placeholder: "Paste your text to check grammar..."
+  },
+  planner: {
+    icon: "📅",
+    title: "Day Planner",
+    subtitle: "Schedule · Tasks · Productivity",
+    color: "#06b6d4",
+    badge: "Planner AI",
+    placeholder: "Tell me your tasks for today..."
   }
 };
 
 const AGENT_TABS = [
-  { key: 'all',         label: 'All',         emoji: '🤖' },
-  { key: 'agriculture', label: 'Agriculture', emoji: '🌾' },
-  { key: 'medical',     label: 'Medical',     emoji: '🏥' },
-  { key: 'education',   label: 'Education',   emoji: '🎓' },
+  { key: 'all',         label: '🤖 Assistant' },
+  { key: 'agriculture', label: '🌾 Farming' },
+  { key: 'medical',     label: '🏥 Health' },
+  { key: 'education',   label: '🎓 Education' },
+  { key: 'grammar',     label: '✍️ Grammar' },
+  { key: 'planner',     label: '📅 Planner' }
 ];
+
+const QUICK_ACTIONS = {
+  all: [
+    "What time is it now?",
+    "What is the weather today?",
+    "Plan my day for me",
+    "Tell me a joke"
+  ],
+  grammar: [
+    "Check my grammar",
+    "Rewrite this formally",
+    "Translate to Kannada",
+    "Simplify this text"
+  ],
+  planner: [
+    "Plan my morning routine",
+    "Make a study schedule",
+    "Help me prioritize tasks",
+    "Plan a productive week"
+  ],
+  agriculture: [
+    "Best crop for June in Karnataka",
+    "How to treat yellow leaves",
+    "Fertilizer for tomato",
+    "Pest control tips"
+  ],
+  medical: [
+    "I have fever and cold",
+    "Headache remedies",
+    "When to see a doctor",
+    "Healthy diet tips"
+  ],
+  education: [
+    "Explain photosynthesis",
+    "Solve math problem",
+    "Help me write an essay",
+    "Quiz me on science"
+  ]
+};
 
 export default function Chat() {
   const { messages, isTyping, sendMessage, clearMessages, activeTopic, setActiveTopic } = useChat();
@@ -100,7 +157,7 @@ export default function Chat() {
                   borderColor: activeTopic === t.key ? AGENT_CONFIG[t.key].color : 'var(--color-border-tertiary)',
                 }}
               >
-                <span>{t.emoji}</span> {t.label}
+                {t.label}
               </button>
             ))}
           </div>
@@ -213,6 +270,43 @@ export default function Chat() {
         )}
 
         <ChatInput onImageUpload={handleImageUpload} />
+        
+        {/* Quick Actions */}
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "8px",
+          padding: "8px 20px 16px 20px"
+        }}>
+          {(QUICK_ACTIONS[activeTopic] || []).map((action, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                sendMessage(action);
+              }}
+              style={{
+                padding: "6px 12px",
+                borderRadius: "16px",
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.05)",
+                color: "#9ca3af",
+                fontSize: "12px",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={e => {
+                e.target.style.borderColor = AGENT_CONFIG[activeTopic]?.color || "#1D9E75"
+                e.target.style.color = AGENT_CONFIG[activeTopic]?.color || "#1D9E75"
+              }}
+              onMouseLeave={e => {
+                e.target.style.borderColor = "rgba(255,255,255,0.1)"
+                e.target.style.color = "#9ca3af"
+              }}
+            >
+              {action}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Right: Agent info panel */}
@@ -220,9 +314,12 @@ export default function Chat() {
         <div style={{ padding: 16, borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 14 }}>AI Agents</div>
           {[
+            { key: 'all',         emoji: '🤖', label: 'Assistant',   desc: 'Weather, time, any question',  bg: '#FFF3E0', color: '#E65100' },
             { key: 'agriculture', emoji: '🌾', label: 'Agriculture', desc: 'Crops, pests, weather, market', bg: '#E1F5EE', color: '#0F6E56' },
             { key: 'medical',     emoji: '🩺', label: 'Medical',     desc: 'Symptoms, safety, hospitals',  bg: '#E6F1FB', color: '#185FA5' },
             { key: 'education',   emoji: '📚', label: 'Education',   desc: 'Concepts, quizzes, tutoring',  bg: '#FAEEDA', color: '#854F0B' },
+            { key: 'grammar',     emoji: '✍️', label: 'Grammar',     desc: 'Correct and rewrite text',     bg: '#FCE4EC', color: '#AD1457' },
+            { key: 'planner',     emoji: '📅', label: 'Planner',     desc: 'Schedule and productivity',    bg: '#E0F7FA', color: '#006064' },
           ].map(a => (
             <div 
               key={a.key} 
