@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # App
     app_env:          str = "development"
-    cors_origins:     str = "http://localhost:5173,http://localhost:3000"
+    cors_origins:     str = "http://localhost:5173,http://localhost:3000,https://gramai-fend.vercel.app,https://gramai-fend.vercel.app/"
     max_upload_size_mb: int = 10
 
     # Voice
