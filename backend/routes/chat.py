@@ -168,19 +168,18 @@ async def send_message(req: ChatRequest, db: Session = Depends(get_db), current_
         enhanced_message = realtime_context + req.message
 
         import asyncio
-        from services.model_service import chat_with_ai_hybrid
+        from services.ai_service import chat_with_ai
         
         # Auto-detect agent from message if general
         if agent == "general":
             agent = detect_agent_from_message(req.message)
             
         response_text = await asyncio.to_thread(
-            chat_with_ai_hybrid,
-            message=enhanced_message,
+            chat_with_ai,
+            user_message=enhanced_message,
             agent_type=agent,
             language=final_lang,
-            use_local_first=True,
-            prefer_lightweight=False
+            chat_history=history
         )
         elapsed_ms = int((time.time() - start) * 1000)
 
