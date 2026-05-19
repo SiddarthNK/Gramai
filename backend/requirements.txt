@@ -23,3 +23,9 @@ pydantic-settings
 requests
 aiofiles
 groq
+transformers
+torch
+accelerate
+sentence-transformers
+scikit-learn
+pytz

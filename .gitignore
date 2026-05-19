@@ -1,34 +1,16 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+# Backend
+backend/.env
+backend/__pycache__/
+backend/*.pyc
+backend/venv/
 
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
 
-# Database
-*.db
-*.sqlite3
-
-# Node.js
-node_modules/
-dist/
-dist-ssr/
-*.local
-
-# IDEs
-.vscode/
-.idea/
-
-# Uploads
-backend/uploads/*
-!backend/uploads/.gitkeep
-
-# Logs
-*.log
+# Models (too large for GitHub)
+*.bin
+*.pt
+*.pth
+models/
