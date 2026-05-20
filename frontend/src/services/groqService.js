@@ -144,7 +144,7 @@ Rules:
 - If unclear: set confidence below 60
 - Always try to identify crop even if dead`;
 
-    // Note: We use the active 'llama-3.2-11b-vision-preview' instead of the non-existent Scout model.
+    // Note: We use the active 'meta-llama/llama-4-scout-17b-16e-instruct' vision model.
     const response = await fetch(GROQ_CHAT_URL, {
       method: "POST",
       headers: {
@@ -152,7 +152,7 @@ Rules:
         "Authorization": `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama-3.2-11b-vision-preview",
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
         messages: [
           {
             role: "user",
