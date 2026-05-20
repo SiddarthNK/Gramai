@@ -75,7 +75,7 @@ export default function Dashboard() {
       {/* Main scrollable area */}
       <div className="content" style={{ flex: 1 }}>
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           {loading
             ? Array(4).fill(0).map((_, i) => <SkeletonStatCard key={i} />)
             : displayStats.map((s, i) => <StatCard key={s.label} {...s} delay={i * 0.07} />)
@@ -83,7 +83,7 @@ export default function Dashboard() {
         </div>
 
         {/* Two-column grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 16 }}>
           {/* Agent Performance Panel */}
           <motion.div className="panel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>

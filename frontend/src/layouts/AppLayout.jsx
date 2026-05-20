@@ -150,7 +150,7 @@ export default function AppLayout() {
       </div>
 
       {/* ─── Main ─── */}
-      <div className="main-area">
+      <div className="main-area" style={{ minWidth: 0 }}>
         {/* Topbar */}
         <div className="topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -182,7 +182,7 @@ export default function AppLayout() {
             <button className="icon-btn" aria-label="Notifications">
               <Bell size={18} />
             </button>
-            <div style={{
+            <div className="online-badge" style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: 'var(--color-background-secondary)',
               padding: '4px 10px 4px 8px',

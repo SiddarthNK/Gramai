@@ -113,15 +113,15 @@ export default function Voice() {
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, height: '100%', overflow: 'hidden' }}>
-      <div style={{ textAlign: 'center', marginBottom: 30, flexShrink: 0 }}>
+    <div className="content" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', overflow: 'hidden' }}>
+      <div style={{ textAlign: 'center', marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Voice Assistant</h1>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
           Stand-alone voice section. Auto-scrolling enabled.
         </p>
       </div>
 
-      <div style={{ position: 'relative', width: 140, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 20 }}>
+      <div style={{ position: 'relative', width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 20 }}>
         {recording && (
           <motion.div
             animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.1, 0.3] }}
@@ -134,11 +134,11 @@ export default function Voice() {
           onClick={recording ? stopRecording : startRecording}
           disabled={isProcessing}
           style={{
-            width: 80, height: 80, borderRadius: '50%', border: 'none',
+            width: 100, height: 100, borderRadius: '50%', border: 'none',
             background: recording ? '#EF4444' : '#1D9E75',
-            color: '#fff', fontSize: 28, cursor: 'pointer',
+            color: '#fff', fontSize: 36, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 20px rgba(0,0,0,0.1)', zIndex: 2
+            boxShadow: recording ? '0 0 30px rgba(239,68,68,0.4)' : '0 0 30px rgba(29,158,117,0.4)', zIndex: 2
           }}
         >
           {isProcessing ? (

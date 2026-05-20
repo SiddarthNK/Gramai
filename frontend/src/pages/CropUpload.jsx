@@ -78,7 +78,7 @@ export default function CropUpload() {
             <div style={{ fontSize: 48, marginBottom: 16 }}>📸</div>
             <div style={{ fontWeight: 500, marginBottom: 8 }}>Click to upload or drag and drop</div>
             <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>JPG, PNG or WebP (max 10MB)</div>
-            <input type="file" hidden onChange={handleFileChange} accept="image/*" />
+            <input type="file" hidden onChange={handleFileChange} accept="image/*" capture="environment" />
           </label>
         ) : (
           <div>
@@ -162,26 +162,26 @@ export default function CropUpload() {
                   </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
                   <Card title="Symptoms" content={result.symptoms} icon="🔍" />
                   <Card title="Causes" content={result.causes} icon="🧬" />
                 </div>
 
                 <div style={{ background: 'var(--color-background-secondary)', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--color-border-tertiary)' }}>
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-tertiary)', fontWeight: 600, fontSize: 14 }}>Treatment Options</div>
-                  <div style={{ display: 'flex' }}>
-                    <div style={{ flex: 1, padding: 16, borderRight: '1px solid var(--color-border-tertiary)' }}>
+                  <div className="flex flex-col md:flex-row">
+                    <div className="flex-1 p-4 border-b md:border-b-0 md:border-r" style={{ borderColor: 'var(--color-border-tertiary)', borderStyle: 'solid' }}>
                       <div style={{ color: '#059669', fontWeight: 700, fontSize: 12, marginBottom: 6 }}>🌿 Organic Treatment</div>
                       <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{result.organic_treatment}</div>
                     </div>
-                    <div style={{ flex: 1, padding: 16 }}>
+                    <div className="flex-1 p-4">
                       <div style={{ color: '#2563EB', fontWeight: 700, fontSize: 12, marginBottom: 6 }}>🧪 Chemical Treatment</div>
                       <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{result.chemical_treatment}</div>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
                   <Card title="Fertilizer Tip" content={result.fertilizer_tip} icon="🧪" />
                   <Card title="Prevention" content={result.prevention} icon="🛡️" />
                 </div>

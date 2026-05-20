@@ -120,12 +120,24 @@ export default function ChatInput({ onImageUpload }) {
 
   return (
     <div style={{ padding: '12px 16px', borderTop: '0.5px solid var(--color-border-tertiary)', flexShrink: 0 }}>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'flex',
+        gap: 6,
+        marginBottom: 10,
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        WebkitOverflowScrolling: 'touch',
+        whiteSpace: 'nowrap',
+        paddingBottom: '4px',
+        maxWidth: '100%',
+      }}>
         {QUICK_PROMPTS.map(p => (
           <button
             key={p.label}
             onClick={() => { setValue(p.label); }}
             style={{
+              flexShrink: 0,
               display: 'inline-flex', alignItems: 'center', gap: 5,
               fontSize: 11, padding: '4px 10px', borderRadius: 20,
               border: '0.5px solid var(--color-border-tertiary)',

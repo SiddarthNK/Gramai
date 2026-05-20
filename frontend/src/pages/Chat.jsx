@@ -150,15 +150,26 @@ export default function Chat() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
         <div style={{
-          padding: '12px 20px', borderBottom: '0.5px solid var(--color-border-tertiary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+          padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexShrink: 0,
+          flexWrap: 'wrap'
         }}>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{
+            display: 'flex',
+            gap: 6,
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: '4px',
+            maxWidth: '100%',
+          }}>
             {AGENT_TABS.map(t => (
               <button
                 key={t.key}
                 onClick={() => setActiveTopic(t.key)}
                 style={{
+                  flexShrink: 0,
                   display: 'inline-flex', alignItems: 'center', gap: 5,
                   padding: '5px 12px', borderRadius: 20, fontSize: 12,
                   border: '0.5px solid', cursor: 'pointer', transition: 'all 0.15s',
@@ -172,7 +183,7 @@ export default function Chat() {
               </button>
             ))}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {activeTopic && activeTopic !== 'all' && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -285,9 +296,14 @@ export default function Chat() {
         {/* Quick Actions */}
         <div style={{
           display: "flex",
-          flexWrap: "wrap",
           gap: "8px",
-          padding: "8px 20px 16px 20px"
+          padding: "8px 16px 16px 16px",
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+          WebkitOverflowScrolling: "touch",
+          whiteSpace: "nowrap",
+          maxWidth: "100%",
         }}>
           {(QUICK_ACTIONS[activeTopic] || []).map((action, i) => (
             <button
@@ -296,6 +312,7 @@ export default function Chat() {
                 sendMessage(action);
               }}
               style={{
+                flexShrink: 0,
                 padding: "6px 12px",
                 borderRadius: "16px",
                 border: "1px solid rgba(255,255,255,0.1)",
