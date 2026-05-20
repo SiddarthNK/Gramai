@@ -103,7 +103,7 @@ async def scan_disease_with_ai(image_bytes: bytes) -> dict:
         print("[SCANNER] Sending image to Groq vision model...")
         
         response = client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model="llama-3.2-11b-vision-preview",
             messages=[
                 {
                     "role": "user",
