@@ -29,6 +29,59 @@ const LANG_INSTRUCTION = {
   english: " Reply ONLY in English language."
 };
 
+// ─── REALTIME CONTEXT HELPER ─────────────────────────────
+const getRealtimeContext = (message) => {
+  let context = "";
+  const msgLower = message.toLowerCase();
+
+  const timeKeywords = [
+    "time", "date", "today", "day",
+    "week", "month", "year", "now",
+    "tomorrow", "yesterday", "schedule"
+  ];
+  
+  if (timeKeywords.some(keyword => msgLower.includes(keyword))) {
+    try {
+      const now = new Date();
+      // Format to India Standard Time (IST)
+      const options = { 
+        timeZone: "Asia/Kolkata", 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        hour12: true 
+      };
+      const formatter = new Intl.DateTimeFormat('en-US', options);
+      const parts = formatter.formatToParts(now);
+      
+      const getValue = (type) => parts.find(p => p.type === type)?.value || '';
+      const weekday = getValue('weekday');
+      const day = getValue('day');
+      const month = getValue('month');
+      const year = getValue('year');
+      const hour = getValue('hour');
+      const minute = getValue('minute');
+      const dayPeriod = getValue('dayPeriod');
+
+      context += `
+[REAL-TIME DATA]
+Current Date: ${weekday}, ${day} ${month} ${year}
+Current Time: ${hour}:${minute} ${dayPeriod} IST
+Day of Week: ${weekday}
+[END REAL-TIME DATA]
+
+`;
+    } catch (e) {
+      console.error("Failed to inject time context:", e);
+    }
+  }
+
+  return context;
+};
+
 // ─── CHAT FUNCTION ───────────────────────────────────────
 export const sendChatMessage = async (
   message,
@@ -63,10 +116,13 @@ export const sendChatMessage = async (
       (SYSTEM_PROMPTS[agentKey] || SYSTEM_PROMPTS.general) +
       (LANG_INSTRUCTION[langKey] || LANG_INSTRUCTION.english);
 
+    const realtimeContext = getRealtimeContext(message);
+    const enhancedMessage = realtimeContext + message;
+
     const messages = [
       { role: "system", content: systemPrompt },
       ...chatHistory.slice(-4),
-      { role: "user", content: message }
+      { role: "user", content: enhancedMessage }
     ];
 
     const response = await fetch(GROQ_CHAT_URL, {
