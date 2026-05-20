@@ -8,14 +8,19 @@ from config import get_settings
 
 settings = get_settings()
 
+db_url = settings.database_url
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
 # Support both SQLite and PostgreSQL
-connect_args = {"check_same_thread": False} if "sqlite" in settings.database_url else {}
+connect_args = {"check_same_thread": False} if "sqlite" in db_url else {}
 
 engine = create_engine(
-    settings.database_url,
+    db_url,
     connect_args=connect_args,
     pool_pre_ping=True,
 )
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
