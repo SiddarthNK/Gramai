@@ -24,9 +24,22 @@ Be brief and clear. Use bullet points. Max 150 words.`
 };
 
 const LANG_INSTRUCTION = {
-  kannada: " Reply ONLY in Kannada language using Kannada script.",
-  hindi: " Reply ONLY in Hindi language using Hindi script.",
-  english: " Reply ONLY in English language."
+  kannada: `
+CRITICAL INSTRUCTION: You MUST reply ONLY in Kannada 
+language using Kannada script.
+Do NOT use English at all.
+Every single word must be in Kannada.`,
+
+  hindi: `
+CRITICAL INSTRUCTION: You MUST reply ONLY in Hindi
+language using Hindi script.
+Do NOT use English at all.
+Every single word must be in Hindi.`,
+
+  english: `
+CRITICAL INSTRUCTION: You MUST reply ONLY in English.
+Do NOT use Kannada or Hindi at all.
+Every single word must be in English only.`
 };
 
 // ─── REALTIME CONTEXT HELPER ─────────────────────────────
@@ -114,7 +127,11 @@ export const sendChatMessage = async (
 
     const systemPrompt =
       (SYSTEM_PROMPTS[agentKey] || SYSTEM_PROMPTS.general) +
+      "\n\n" +
       (LANG_INSTRUCTION[langKey] || LANG_INSTRUCTION.english);
+
+    console.log("System prompt language:", language);
+    console.log("Full prompt:", systemPrompt.slice(0, 100));
 
     const realtimeContext = getRealtimeContext(message);
     const enhancedMessage = realtimeContext + message;

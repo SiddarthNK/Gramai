@@ -11,7 +11,7 @@ export default function Voice() {
   const [transcribedText, setTranscribedText] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [error, setError] = useState(null);
-  const { language } = useChat();
+  const [language, setLanguage] = useState("english");
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const responseEndRef = useRef(null);
@@ -96,6 +96,9 @@ export default function Voice() {
       const spokenText = transcribeRes.text.trim();
       setTranscribedText(spokenText);
 
+      console.log("Spoken text:", spokenText);
+      console.log("Selected language:", language);
+
       // Get AI response
       const chatRes = await sendChatMessage(spokenText, "agriculture", language);
       if (chatRes.success && chatRes.response) {
@@ -116,9 +119,46 @@ export default function Voice() {
     <div className="content" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', overflow: 'hidden' }}>
       <div style={{ textAlign: 'center', marginBottom: 24, flexShrink: 0 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Voice Assistant</h1>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 16 }}>
           Stand-alone voice section. Auto-scrolling enabled.
         </p>
+
+        {/* Language Switcher Buttons */}
+        <div style={{
+          display: "flex",
+          gap: "8px",
+          justifyContent: "center",
+          marginBottom: "16px"
+        }}>
+          {["english", "kannada", "hindi"].map((lang) => (
+            <button
+              key={lang}
+              onClick={() => {
+                setLanguage(lang);
+                console.log("Language changed to:", lang);
+              }}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "20px",
+                border: language === lang
+                  ? "2px solid #22c55e"
+                  : "1px solid rgba(255,255,255,0.1)",
+                background: language === lang
+                  ? "rgba(34,197,94,0.2)"
+                  : "transparent",
+                color: language === lang ? "#22c55e" : "#9ca3af",
+                cursor: "pointer",
+                fontWeight: language === lang ? "700" : "400",
+                fontSize: "14px",
+                transition: "all 0.2s"
+              }}
+            >
+              {lang === "english" ? "English"
+                : lang === "kannada" ? "ಕನ್ನಡ"
+                : "हिंदी"}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={{ position: 'relative', width: 150, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 20 }}>
