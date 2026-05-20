@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useChat } from '../contexts/ChatContext';
 import toast from 'react-hot-toast';
 import FormattedResponse from '../components/FormattedResponse';
+import { transcribeAudio, sendChatMessage } from '../services/groqService';
 
 export default function Voice() {
   const [recording, setRecording] = useState(false);
@@ -85,57 +86,22 @@ export default function Voice() {
       setIsProcessing(true);
       setError("");
 
-      const token = localStorage.getItem('gram_token');
-      const extension = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
+      const transcribeRes = await transcribeAudio(audioBlob);
       
-      const formData = new FormData();
-      formData.append("file", audioBlob, `recording.${extension}`);
-
-      const transcribeRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/audio/transcribe`, {
-        method: "POST",
-        headers: token ? { "Authorization": `Bearer ${token}` } : {},
-        body: formData
-      });
-
-      if (!transcribeRes.ok) {
-        throw new Error(`Transcription HTTP error: ${transcribeRes.status}`);
-      }
-
-      const transcribeData = await transcribeRes.json();
-      if (!transcribeData.success || !transcribeData.text) {
-        setError("Could not understand audio. Please speak clearly.");
+      if (!transcribeRes.success || !transcribeRes.text) {
+        setError(transcribeRes.error || "Could not understand audio. Please speak clearly.");
         return;
       }
 
-      const spokenText = transcribeData.text.trim();
+      const spokenText = transcribeRes.text.trim();
       setTranscribedText(spokenText);
 
       // Get AI response
-      const aiRes = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/chat/message`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          message: spokenText,
-          session_id: `voice_session_${Date.now()}`,
-          language: language || "en",
-          topic: "agriculture"
-        })
-      });
-
-      if (!aiRes.ok) {
-        const errText = await aiRes.text();
-        throw new Error(`AI HTTP ${aiRes.status}: ${errText}`);
-      }
-
-      const aiData = await aiRes.json();
-      if (aiData.response) {
-        setAiResponse(aiData.response);
+      const chatRes = await sendChatMessage(spokenText, "agriculture", language);
+      if (chatRes.success && chatRes.response) {
+        setAiResponse(chatRes.response);
       } else {
-        setError("AI did not return a response. Please try again.");
+        setError(chatRes.error || "AI did not return a response. Please try again.");
       }
 
     } catch (err) {

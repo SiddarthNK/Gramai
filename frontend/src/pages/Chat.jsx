@@ -6,6 +6,7 @@ import ChatInput from '../components/chat/ChatInput';
 import { cropAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import { getAgentEmoji } from '../utils/helpers';
+import { scanCropImage } from '../services/groqService';
 
 const AGENT_CONFIG = {
   agriculture: {
@@ -119,17 +120,27 @@ export default function Chat() {
 
   const handleImageUpload = async (file) => {
     const preview = URL.createObjectURL(file);
-    const fd = new FormData();
-    fd.append('image', file);
     toast.loading('Analyzing crop image…', { id: 'crop-analyze' });
     try {
-      const res = await cropAPI.uploadImage(fd);
-      setCropResult({ ...res.data, preview });
-      toast.success(`Detected: ${res.data.plant_name} - ${res.data.disease} (${Math.round(res.data.confidence * 100)}%)`, { id: 'crop-analyze' });
+      const res = await scanCropImage(file);
+      if (!res.success) {
+        throw new Error(res.error || 'Scan failed');
+      }
+      
+      const mappedData = {
+        plant_name: res.data.crop_detected,
+        disease: res.data.disease_detected,
+        confidence: Number(res.data.confidence) / 100,
+        treatment_summary: res.data.organic_treatment || res.data.farmer_advice
+      };
+      
+      setCropResult({ ...mappedData, preview });
+      toast.success(`Detected: ${mappedData.plant_name} - ${mappedData.disease} (${Math.round(mappedData.confidence * 100)}%)`, { id: 'crop-analyze' });
       // Also send to chat
-      await sendMessage(`I uploaded a crop image. It appears to be a ${res.data.plant_name}. Analysis result: ${res.data.disease} with ${Math.round(res.data.confidence * 100)}% confidence. What should I do?`);
-    } catch {
-      toast.error('Image analysis failed — check backend', { id: 'crop-analyze' });
+      await sendMessage(`I uploaded a crop image. It appears to be a ${mappedData.plant_name}. Analysis result: ${mappedData.disease} with ${Math.round(mappedData.confidence * 100)}% confidence. What should I do?`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Image analysis failed: ' + (err.message || 'unknown error'), { id: 'crop-analyze' });
     }
   };
 

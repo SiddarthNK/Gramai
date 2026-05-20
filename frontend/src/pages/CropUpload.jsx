@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { scanCropImage } from '../services/groqService';
 
 export default function CropUpload() {
   const [file, setFile] = useState(null);
@@ -34,15 +35,7 @@ export default function CropUpload() {
       setLoading(true);
       setError(null);
       
-      const formData = new FormData();
-      formData.append("file", file);
-      
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/scan/disease`, {
-        method: "POST",
-        body: formData
-      });
-      
-      const resData = await response.json();
+      const resData = await scanCropImage(file);
       
       if (resData.success) {
         setResult(resData.data);

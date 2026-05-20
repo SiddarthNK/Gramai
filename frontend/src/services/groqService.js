@@ -1,0 +1,258 @@
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+
+const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+const SYSTEM_PROMPTS = {
+  agriculture: `You are KrishiBot, farming AI for Karnataka farmers.
+Give practical farming advice. Use bullet points. Max 150 words.`,
+
+  medical: `You are a rural health assistant for Indian villages.
+Give basic health info. Always say: consult a doctor.
+Use bullet points. Max 150 words.`,
+
+  education: `You are a friendly tutor for rural Indian students.
+Explain simply with examples. Use bullet points. Max 150 words.`,
+
+  assistant: `You are Gram AI personal assistant like ChatGPT.
+Be helpful, friendly, and clear. Use bullet points. Max 150 words.`,
+
+  grammar: `You are a grammar expert.
+Correct mistakes and explain clearly. Max 150 words.`,
+
+  general: `You are Gram AI helpful rural assistant.
+Be brief and clear. Use bullet points. Max 150 words.`
+};
+
+const LANG_INSTRUCTION = {
+  kannada: " Reply ONLY in Kannada language using Kannada script.",
+  hindi: " Reply ONLY in Hindi language using Hindi script.",
+  english: " Reply ONLY in English language."
+};
+
+// ─── CHAT FUNCTION ───────────────────────────────────────
+export const sendChatMessage = async (
+  message,
+  agentType = "general",
+  language = "english",
+  chatHistory = []
+) => {
+  try {
+    if (!GROQ_API_KEY) {
+      console.warn("[GROQ] VITE_GROQ_API_KEY environment variable is not defined.");
+      return {
+        success: false,
+        error: "VITE_GROQ_API_KEY is not defined. Please add your key to environment variables."
+      };
+    }
+
+    const langKey = 
+      language.toLowerCase() === "kn" || language.toLowerCase() === "kannada"
+        ? "kannada"
+        : language.toLowerCase() === "hi" || language.toLowerCase() === "hindi"
+        ? "hindi"
+        : "english";
+
+    const agentKey = 
+      agentType === "all"
+        ? "assistant"
+        : SYSTEM_PROMPTS[agentType]
+        ? agentType
+        : "general";
+
+    const systemPrompt =
+      (SYSTEM_PROMPTS[agentKey] || SYSTEM_PROMPTS.general) +
+      (LANG_INSTRUCTION[langKey] || LANG_INSTRUCTION.english);
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...chatHistory.slice(-4),
+      { role: "user", content: message }
+    ];
+
+    const response = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: messages,
+        max_tokens: 400,
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || "Chat failed");
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      response: data.choices[0].message.content
+    };
+
+  } catch (error) {
+    console.error("[CHAT ERROR]", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+// ─── IMAGE SCAN FUNCTION ─────────────────────────────────
+export const scanCropImage = async (imageFile) => {
+  try {
+    if (!GROQ_API_KEY) {
+      console.warn("[GROQ] VITE_GROQ_API_KEY environment variable is not defined.");
+      return {
+        success: false,
+        error: "VITE_GROQ_API_KEY is not defined. Please add your key to environment variables."
+      };
+    }
+
+    // Convert image to base64
+    const base64Image = await fileToBase64(imageFile);
+
+    const prompt = `You are an expert plant disease specialist AI for Indian farmers.
+
+Analyze this plant image carefully.
+Respond ONLY in this exact JSON format with no extra text:
+
+{
+  "is_plant": true,
+  "crop_detected": "Tomato",
+  "image_quality": "good",
+  "disease_detected": "Early Blight",
+  "confidence": 88,
+  "severity": "Moderate",
+  "symptoms": "Brown spots with yellow rings on leaves.",
+  "causes": "Fungus Alternaria solani in humid conditions.",
+  "organic_treatment": "Spray neem oil every 7 days.",
+  "chemical_treatment": "Mancozeb 75% WP at 2.5g per liter.",
+  "fertilizer_tip": "Apply potassium-rich fertilizer.",
+  "prevention": "Avoid overhead watering. Rotate crops.",
+  "recovery_estimate": "2 to 3 weeks with treatment.",
+  "farmer_advice": "Remove infected leaves immediately and start treatment today."
+}
+
+Rules:
+- If not a plant: set is_plant false, confidence 0, disease_detected "Not a plant image"
+- If unclear: set confidence below 60
+- Always try to identify crop even if dead`;
+
+    // Note: We use the active 'llama-3.2-11b-vision-preview' instead of the non-existent Scout model.
+    const response = await fetch(GROQ_CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "llama-3.2-11b-vision-preview",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64Image}`
+                }
+              },
+              {
+                type: "text",
+                text: prompt
+              }
+            ]
+          }
+        ],
+        max_tokens: 1024,
+        temperature: 0.1
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || "Scan failed");
+    }
+
+    const data = await response.json();
+    let text = data.choices[0].message.content.trim();
+
+    // Clean JSON response
+    if (text.includes("```")) {
+      text = text.split("```")[1];
+      if (text.startsWith("json")) {
+        text = text.slice(4);
+      }
+    }
+
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}") + 1;
+    if (start !== -1 && end > start) {
+      text = text.slice(start, end);
+    }
+
+    const result = JSON.parse(text.trim());
+    return { success: true, data: result };
+
+  } catch (error) {
+    console.error("[SCAN ERROR]", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ─── AUDIO TRANSCRIPTION ─────────────────────────────────
+export const transcribeAudio = async (audioBlob) => {
+  try {
+    if (!GROQ_API_KEY) {
+      console.warn("[GROQ] VITE_GROQ_API_KEY environment variable is not defined.");
+      return {
+        success: false,
+        error: "VITE_GROQ_API_KEY is not defined. Please add your key to environment variables."
+      };
+    }
+
+    const formData = new FormData();
+    formData.append("file", audioBlob, "audio.webm");
+    formData.append("model", "whisper-large-v3");
+    formData.append("response_format", "text");
+
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/audio/transcriptions",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`
+        },
+        body: formData
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || "Transcription failed");
+    }
+
+    const text = await response.text();
+    return { success: true, text };
+
+  } catch (error) {
+    console.error("[AUDIO ERROR]", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ─── HELPER ──────────────────────────────────────────────
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};

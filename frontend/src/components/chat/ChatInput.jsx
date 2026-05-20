@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '../../contexts/ChatContext';
 import toast from 'react-hot-toast';
 import { Mic, MicOff, Send, Loader2, Image as ImageIcon } from 'lucide-react';
+import { transcribeAudio } from '../../services/groqService';
 
 const QUICK_PROMPTS = [
   { label: 'Crop disease?', icon: 'ti-leaf', agent: 'agriculture' },
@@ -77,22 +78,13 @@ export default function ChatInput({ onImageUpload }) {
   const handleChatTranscription = async (blob, mimeType) => {
     try {
       setIsProcessing(true);
-      const extension = mimeType.includes("webm") ? "webm" : "ogg";
-      const formData = new FormData();
-      formData.append('file', blob, `chat_voice.${extension}`);
-      formData.append('language', language);
-
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/audio/transcribe`, {
-        method: "POST",
-        body: formData
-      });
       
-      const result = await response.json();
+      const result = await transcribeAudio(blob);
       if (result.success && result.text) {
         setValue(prev => prev ? prev + " " + result.text : result.text);
         toast.success('Voice transcribed!');
       } else {
-        toast.error('Transcription failed');
+        toast.error(result.error || 'Transcription failed');
       }
     } catch (err) {
       console.error("Transcription error:", err);

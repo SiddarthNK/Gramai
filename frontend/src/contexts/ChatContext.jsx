@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { sendChatMessage } from '../services/groqService';
 
 const ChatContext = createContext(null);
 
@@ -30,45 +31,43 @@ export function ChatProvider({ children }) {
     
     setHistories(prev => ({
       ...prev,
-      [activeTopic]: [...prev[activeTopic], userMsg],
-      ...(activeTopic !== 'all' ? { all: [...prev.all, userMsg] } : {})
+      [activeTopic]: [...(prev[activeTopic] || []), userMsg],
+      ...(activeTopic !== 'all' ? { all: [...(prev.all || []), userMsg] } : {})
     }));
 
     setIsTyping(true);
 
     try {
-      const controller = new AbortController();
-      abortRef.current = controller;
+      const history = messages.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }));
 
-      const res = await api.post('/api/chat/message', {
-        message: content,
-        session_id: sessionId,
-        language,
-        topic: activeTopic === 'all' ? null : activeTopic,
-      }, { signal: controller.signal });
+      const res = await sendChatMessage(content, activeTopic, language, history);
 
-      const { response, agent, confidence, sources } = res.data;
-
-      if (res.data.error) {
-        throw new Error(res.data.error);
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to send message');
       }
+
+      const response = res.response;
+      const agent = activeTopic;
 
       const aiMsg = {
         id: Date.now() + 1,
         role: 'assistant',
         content: response,
         agent,
-        confidence,
-        sources,
+        confidence: 1.0,
+        sources: [],
         timestamp: new Date().toISOString(),
       };
 
       setHistories(prev => {
         const next = { ...prev };
-        if (agent && next[agent]) {
-          next[agent] = [...next[agent], aiMsg];
+        next[agent] = [...(next[agent] || []), aiMsg];
+        if (agent !== 'all') {
+          next.all = [...(next.all || []), aiMsg];
         }
-        next.all = [...next.all, aiMsg];
         return next;
       });
     } catch (err) {
@@ -88,13 +87,13 @@ export function ChatProvider({ children }) {
       
       setHistories(prev => ({
         ...prev,
-        all: [...prev.all, aiMsg],
-        [activeTopic]: [...prev[activeTopic], aiMsg]
+        all: [...(prev.all || []), aiMsg],
+        [activeTopic]: [...(prev[activeTopic] || []), aiMsg]
       }));
     } finally {
       setIsTyping(false);
     }
-  }, [sessionId, language, activeTopic]);
+  }, [sessionId, language, activeTopic, messages]);
 
   const clearMessages = useCallback(() => {
     setHistories(prev => ({ ...prev, [activeTopic]: [] }));
