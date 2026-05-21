@@ -448,11 +448,31 @@ def get_system_prompt(agent_type: str, language: str) -> str:
     
     lang_instruction = ""
     if language == "kannada":
-        lang_instruction = "\n⚠️ MUST REPLY ONLY IN KANNADA."
+        lang_instruction = """
+IMPORTANT LANGUAGE RULE:
+- User may speak in ANY language (Kannada, Hindi, English)
+- You MUST ALWAYS reply in KANNADA only
+- Never comment on what language the user spoke
+- Never refuse to answer based on input language
+- Just understand the question and reply in Kannada
+- Use Kannada script always"""
     elif language == "hindi":
-        lang_instruction = "\n⚠️ MUST REPLY ONLY IN HINDI."
+        lang_instruction = """
+IMPORTANT LANGUAGE RULE:
+- User may speak in ANY language (Kannada, Hindi, English)
+- You MUST ALWAYS reply in HINDI only
+- Never comment on what language the user spoke
+- Never refuse to answer based on input language
+- Just understand the question and reply in Hindi
+- Use Hindi script always"""
     else:
-        lang_instruction = "\n⚠️ MUST REPLY ONLY IN ENGLISH."
+        lang_instruction = """
+IMPORTANT LANGUAGE RULE:
+- User may speak in ANY language (Kannada, Hindi, English)
+- You MUST ALWAYS reply in ENGLISH only
+- Never comment on what language the user spoke
+- Never refuse to answer based on input language
+- Just understand the question and reply in English"""
 
     prompts = {
         "agriculture": f"""You are KrishiBot, farming AI 

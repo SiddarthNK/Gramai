@@ -16,11 +16,31 @@ def get_system_prompt(agent_type: str, language: str = "english") -> str:
     lang_instruction = ""
     
     if language.lower() == "kannada":
-        lang_instruction = "IMPORTANT: You MUST reply ONLY in Kannada language using Kannada script."
+        lang_instruction = """
+IMPORTANT LANGUAGE RULE:
+- User may speak in ANY language (Kannada, Hindi, English)
+- You MUST ALWAYS reply in KANNADA only
+- Never comment on what language the user spoke
+- Never refuse to answer based on input language
+- Just understand the question and reply in Kannada
+- Use Kannada script always"""
     elif language.lower() == "hindi":
-        lang_instruction = "IMPORTANT: You MUST reply ONLY in Hindi language using Hindi script."
+        lang_instruction = """
+IMPORTANT LANGUAGE RULE:
+- User may speak in ANY language (Kannada, Hindi, English)
+- You MUST ALWAYS reply in HINDI only
+- Never comment on what language the user spoke
+- Never refuse to answer based on input language
+- Just understand the question and reply in Hindi
+- Use Hindi script always"""
     else:
-        lang_instruction = "IMPORTANT: You MUST reply ONLY in English language."
+        lang_instruction = """
+IMPORTANT LANGUAGE RULE:
+- User may speak in ANY language (Kannada, Hindi, English)
+- You MUST ALWAYS reply in ENGLISH only
+- Never comment on what language the user spoke
+- Never refuse to answer based on input language
+- Just understand the question and reply in English"""
 
     formatting_rules = """
 ALWAYS format your response with:
