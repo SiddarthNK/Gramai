@@ -24,22 +24,31 @@ Be brief and clear. Use bullet points. Max 150 words.`
 };
 
 const LANG_INSTRUCTION = {
+  english: `
+IMPORTANT LANGUAGE RULE:
+- User may speak in ANY language (Kannada, Hindi, English)
+- You MUST ALWAYS reply in ENGLISH only
+- Never comment on what language the user spoke
+- Never refuse to answer based on input language
+- Just understand the question and reply in English`,
+
   kannada: `
-CRITICAL INSTRUCTION: You MUST reply ONLY in Kannada 
-language using Kannada script.
-Do NOT use English at all.
-Every single word must be in Kannada.`,
+IMPORTANT LANGUAGE RULE:
+- User may speak in ANY language (Kannada, Hindi, English)
+- You MUST ALWAYS reply in KANNADA only
+- Never comment on what language the user spoke
+- Never refuse to answer based on input language
+- Just understand the question and reply in Kannada
+- Use Kannada script always`,
 
   hindi: `
-CRITICAL INSTRUCTION: You MUST reply ONLY in Hindi
-language using Hindi script.
-Do NOT use English at all.
-Every single word must be in Hindi.`,
-
-  english: `
-CRITICAL INSTRUCTION: You MUST reply ONLY in English.
-Do NOT use Kannada or Hindi at all.
-Every single word must be in English only.`
+IMPORTANT LANGUAGE RULE:
+- User may speak in ANY language (Kannada, Hindi, English)
+- You MUST ALWAYS reply in HINDI only
+- Never comment on what language the user spoke
+- Never refuse to answer based on input language
+- Just understand the question and reply in Hindi
+- Use Hindi script always`
 };
 
 // ─── REALTIME CONTEXT HELPER ─────────────────────────────
